@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Dashboard for Untappd",
+  "version": "0.1.0",
+  "description": "Ditt eget Untappd-dashbord med bryggerier, land og stiler, hentet med din egen innlogging. Ikke tilknyttet Untappd.",
+  "permissions": ["storage"],
+  "host_permissions": ["https://untappd.com/*"],
+  "background": {
+    "service_worker": "background.js",
+    "scripts": ["lib/api.js", "background.js"]
+  },
+  "action": {
+    "default_title": "Dashboard for Untappd"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://untappd.com/user/*/beers*"],
+      "js": ["lib/api.js", "lib/parse.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "minimum_chrome_version": "121",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{3d7c4f1e-5b2a-4e8f-9a61-0c2d8b7e4f93}",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
+  }
+}

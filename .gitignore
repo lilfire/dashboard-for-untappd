@@ -1,0 +1,7 @@
+node_modules/
+web-ext-artifacts/
+*.xpi
+*.zip
+
+# Lagrede kopier av Untappd-sider inneholder personlige data
+test/fixtures/*.html

@@ -1,0 +1,27 @@
+{
+  "name": "dashboard-for-untappd",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nettleserutvidelse for Firefox og Chrome: ditt eget Untappd-dashbord. Ikke tilknyttet Untappd.",
+  "scripts": {
+    "lint": "web-ext lint",
+    "build": "web-ext build",
+    "start:firefox": "web-ext run --target firefox-desktop"
+  },
+  "webExt": {
+    "ignoreFiles": [
+      "test",
+      "PLAN.md",
+      "README.md",
+      "package.json",
+      "package-lock.json",
+      "web-ext-artifacts"
+    ],
+    "build": {
+      "overwriteDest": true
+    }
+  },
+  "devDependencies": {
+    "web-ext": "^8.0.0"
+  }
+}
