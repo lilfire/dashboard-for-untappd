@@ -1,34 +1,76 @@
 # Dashboard for Untappd
 
-Nettleserutvidelse for Firefox og Chrome som viser ditt eget Untappd-dashbord: bryggerier, land og stiler,
-hentet med innloggingen du allerede har i nettleseren.
+Nettleserutvidelse for Firefox og Chrome som viser ditt eget Untappd-dashbord, hentet med innloggingen du allerede har i nettleseren.
 
-**Ikke tilknyttet Untappd.** Utvidelsen kontakter bare untappd.com, har ingen sporing og sender ingen data noe annet sted.
+**Ikke tilknyttet Untappd.** Utvidelsen kontakter bare untappd.com, har ingen sporing og lagrer dataene bare i nettleseren din.
 
-> Under utvikling. Se [PLAN.md](PLAN.md).
+## Hva du får
 
-## Prøv den (utvikling)
+- **Nøkkeltall:** innsjekkinger, unike øl, bryggerier, land, stiler, merker og venner
+- **Siste endring:** nye bryggerier, land og stiler, og bryggerier du har fått flere øl fra
+- **Bryggerier:** søk, filter på antall øl og sortering, med lenke til bryggerisiden på Untappd
+- **Land og stiler:** rangert, med stiler gruppert i familier
+- **Siste øl:** de 25 nyeste, med din rangering mot den globale
+- **Utvikling:** kurve over unike øl, bryggerier, land og stiler over tid
+- **Sammenlign:** felles bryggerier, land og stiler med en venn
+- Norsk og engelsk
+
+Tallene er unike øl, ikke innsjekkinger.
+
+## Installer
 
 ### Firefox
-1. Gå til `about:debugging#/runtime/this-firefox`
-2. Trykk **Last inn midlertidig tillegg …** og velg `manifest.json` i denne mappen
-3. Klikk på utvidelsesikonet i verktøylinjen (eventuelt via puslespillikonet)
-
-Midlertidige tillegg forsvinner når Firefox startes på nytt.
+1. Last ned siste `dashboard-for-untappd-<versjon>.xpi` fra [Releases](https://github.com/lilfire/dashboard-for-untappd/releases)
+2. Firefox spør om du vil legge til utvidelsen. Trykk **Legg til**
+3. Nye versjoner installeres automatisk
 
 ### Chrome
-1. Gå til `chrome://extensions` og slå på **Utviklermodus**
-2. Trykk **Last inn upakket** og velg denne mappen
-3. Klikk på utvidelsesikonet i verktøylinjen
+1. Last ned siste `dashboard-for-untappd-chrome-<versjon>.zip` fra [Releases](https://github.com/lilfire/dashboard-for-untappd/releases) og pakk den ut
+2. Gå til `chrome://extensions`, slå på **Utviklermodus** og trykk **Last inn upakket**
+3. Velg den utpakkede mappen
+
+Chrome-versjonen oppdateres ikke automatisk. Gjenta stegene når det kommer en ny versjon.
+
+## Bruk
+
+1. Logg inn på [untappd.com](https://untappd.com) i samme nettleser
+2. Klikk på utvidelsesikonet. Dashbordet henter ølhistorikken din
+3. Trykk **Oppdater** for ferske tall. Dataene oppdateres også automatisk når de er eldre enn 6 timer, og når du selv åpner ølsiden din på Untappd
+
+Under **Innstillinger** kan du velge brukernavn, språk og hvor ofte dataene skal oppdateres, og slette alle lagrede data.
+
+### Feilsøking
+- **«Du er ikke logget inn»:** logg inn på untappd.com i samme nettleser og trykk Oppdater
+- **«Untappd ba om en sjekk»:** fullfør sjekken i fanen som åpnes, og trykk Oppdater. Utvidelsen prøver aldri å omgå slike sjekker
+- **Diagnose:** Innstillinger → lenken **Diagnose** nederst tester henting steg for steg
+
+## Personvern
+
+- Utvidelsen gjør vanlige sidevisninger av ølsiden din, med din innlogging, bare når du ber om det eller dataene er gamle
+- Dataene lagres i nettleserens lagring for utvidelser og sendes ingen andre steder
+- Den har bare tilgang til `untappd.com`
+
+## Bruk på egen risiko
+
+Untappds vilkår er strenge på automatisering. Utvidelsen henter én side om gangen, som når du selv besøker den, men bruk skjer på eget ansvar.
 
 ## Utvikling
 
 ```bash
 npm install
-npm run lint
+npm test        # tester for tolking og lagring
+npm run lint    # web-ext lint (selvdistribuert)
 ```
 
-## Bruk på egen risiko
+Last inn midlertidig: Firefox `about:debugging#/runtime/this-firefox` → **Last inn midlertidig tillegg** → `manifest.json`.
+Chrome: `chrome://extensions` → **Last inn upakket** → prosjektmappen.
 
-Utvidelsen gjør vanlige sidevisninger av din egen ølside, og bare når du ber om det eller dataene er gamle.
-Untappds vilkår er strenge på automatisering. Bruk skjer på eget ansvar.
+Legg gjerne en kopi av din egen ølside som `test/fixtures/private-beers.html` for en ekstra test mot ekte data. Filen ignoreres av git.
+
+### Ny versjon
+
+Engangsoppsett: lag API-nøkler på [addons.mozilla.org](https://addons.mozilla.org/developers/addon/api/key/) og legg dem inn som repo-hemmelighetene `AMO_JWT_ISSUER` og `AMO_JWT_SECRET` (Settings → Secrets and variables → Actions).
+
+1. Øk `version` i `manifest.json` og commit
+2. `git tag v<versjon>` og `git push origin v<versjon>`
+3. GitHub Actions tester, signerer for Firefox (unlisted), lager Chrome-zip, publiserer releasen og oppdaterer `updates.json`

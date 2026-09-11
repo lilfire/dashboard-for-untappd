@@ -1,16 +1,33 @@
 {
   "manifest_version": 3,
   "name": "Dashboard for Untappd",
-  "version": "0.1.0",
-  "description": "Ditt eget Untappd-dashbord med bryggerier, land og stiler, hentet med din egen innlogging. Ikke tilknyttet Untappd.",
+  "version": "1.0.0",
+  "description": "Your own Untappd dashboard: breweries, countries and styles, fetched with your own login. Not affiliated with Untappd.",
+  "homepage_url": "https://github.com/lilfire/dashboard-for-untappd",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png",
+    "128": "icons/icon-128.png"
+  },
   "permissions": ["storage"],
   "host_permissions": ["https://untappd.com/*"],
   "background": {
     "service_worker": "background.js",
-    "scripts": ["lib/api.js", "background.js"]
+    "scripts": ["lib/api.js", "lib/store.js", "background.js"]
   },
   "action": {
-    "default_title": "Dashboard for Untappd"
+    "default_title": "Dashboard for Untappd",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
+    }
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
   },
   "content_scripts": [
     {
@@ -24,6 +41,7 @@
     "gecko": {
       "id": "{3d7c4f1e-5b2a-4e8f-9a61-0c2d8b7e4f93}",
       "strict_min_version": "140.0",
+      "update_url": "https://raw.githubusercontent.com/lilfire/dashboard-for-untappd/main/updates.json",
       "data_collection_permissions": {
         "required": ["none"]
       }

@@ -1,7 +1,9 @@
 node_modules/
+dev/preview/
+.claude/
 web-ext-artifacts/
 *.xpi
 *.zip
 
-# Lagrede kopier av Untappd-sider inneholder personlige data
-test/fixtures/*.html
+# Lagrede kopier av ekte Untappd-sider inneholder personlige data
+test/fixtures/private-*.html

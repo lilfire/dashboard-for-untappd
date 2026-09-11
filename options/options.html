@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard for Untappd</title>
+<link rel="icon" href="../icons/icon-32.png">
+<link rel="stylesheet" href="../dashboard/dashboard.css">
+<style>
+  .wrap { max-width: 640px; }
+  form { display: grid; gap: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
+  .field { display: grid; gap: 6px; }
+  .field label { font-weight: 600; }
+  .field small { color: var(--muted); }
+  .field input, .field select { padding: 9px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--ground); }
+  .field input[type="number"] { max-width: 120px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .danger { display: grid; gap: 8px; padding: 18px; border: 1px solid var(--line); border-radius: 8px; }
+  .btn.warn { border-color: var(--bad); color: var(--bad); background: transparent; }
+  .saved { color: var(--new); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><img src="../icons/icon-32.png" alt="" width="22" height="22"><span>Dashboard for Untappd</span></div>
+    <a class="btn" href="../dashboard/index.html" data-i18n="settings_back"></a>
+  </header>
+  <h1 data-i18n="settings_title"></h1>
+
+  <form id="form">
+    <div class="field">
+      <label for="username" data-i18n="settings_username"></label>
+      <input id="username" type="text" autocomplete="off" spellcheck="false">
+      <small data-i18n="settings_usernameHint"></small>
+    </div>
+    <div class="field">
+      <label for="stale" data-i18n="settings_stale"></label>
+      <input id="stale" type="number" min="1" max="168" step="1" required>
+    </div>
+    <div class="field">
+      <label for="language" data-i18n="settings_language"></label>
+      <select id="language">
+        <option value="auto" data-i18n="lang_auto"></option>
+        <option value="nb">Norsk (bokmål)</option>
+        <option value="en">English</option>
+      </select>
+    </div>
+    <div class="row">
+      <button class="btn primary" type="submit" data-i18n="settings_save"></button>
+      <span class="saved" id="saved" aria-live="polite"></span>
+    </div>
+  </form>
+
+  <section class="danger">
+    <div class="row">
+      <button class="btn warn" id="reset" type="button" data-i18n="settings_reset"></button>
+      <span class="saved" id="reset-done" aria-live="polite"></span>
+    </div>
+  </section>
+
+  <footer>
+    <span data-i18n="footer"></span>
+    <a href="../dev/diagnose.html">Diagnose</a>
+  </footer>
+</div>
+<script src="../lib/api.js"></script>
+<script src="../lib/store.js"></script>
+<script src="../lib/i18n.js"></script>
+<script src="options.js"></script>
+</body>
+</html>

@@ -6,11 +6,16 @@
   "scripts": {
     "lint": "web-ext lint",
     "build": "web-ext build",
-    "start:firefox": "web-ext run --target firefox-desktop"
+    "start:firefox": "web-ext run --target firefox-desktop",
+    "test": "node --test test/*.test.js"
   },
   "webExt": {
     "ignoreFiles": [
       "test",
+      "dev/preview",
+      "scripts",
+      "updates.json",
+      ".github",
       "PLAN.md",
       "README.md",
       "package.json",
@@ -19,9 +24,13 @@
     ],
     "build": {
       "overwriteDest": true
+    },
+    "lint": {
+      "selfHosted": true
     }
   },
   "devDependencies": {
+    "linkedom": "^0.18.13",
     "web-ext": "^8.0.0"
   }
 }

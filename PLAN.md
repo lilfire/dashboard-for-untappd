@@ -32,6 +32,28 @@ Datoer: rå HTML har `<abbr class="date-time">Thu, 03 Sep 2026 23:16:28 +0200</a
 
 ## Status
 
+**Versjon 1.0.0 er ferdig bygget (11. september 2026).**
+
+| Trinn | Status |
+|---|---|
+| 1 Forutsetninger | Testet i Firefox 153 og Chrome 152 (se under) |
+| 2 Skjelett | Ikoner 16–128 px. Dashbordet åpnes fra ikonet og ved første installasjon |
+| 3 Tolkning | `lib/parse.js`, tester mot oppdiktet `test/fixtures/sample-beers.html`. Valgfri test mot `private-beers.html` |
+| 4 Henting og lagring | `lib/fetch.js`, `lib/store.js` (10 øyeblikksbilder, daglige totaltall), `test/store.test.js` |
+| 5 Dashbord | Nøkkeltall, siste endring, bryggerier, land, stiler, siste øl, utvikling. Verifisert i forhåndsvisning med oppdiktede data |
+| 6 Språk og innstillinger | `lib/i18n.js` (nb/en), `options/` |
+| 7 Feiltilstander | Varsler for utlogget, sjekk, tidsavbrudd, manglende data og tilgang. Lagrede data vises fortsatt |
+| 8 Distribusjon | `.github/workflows/release.yml`, `updates.json`, `scripts/update-manifest.js`. Signering venter på AMO-nøkler fra eier |
+| 9 Sammenligning | Fanen «Sammenlign» |
+
+Avvik fra planen:
+- Skrifttyper: systemskrifter (Georgia for overskrifter), ingen pakkede fontfiler
+- Språk: egen ordbok i `lib/i18n.js` i stedet for `_locales`. Chrome bruker `no` og Firefox `nb`, og brukeren skal kunne velge språk
+- HTML settes via `lib/html.js` (automatisk escaping) i stedet for `innerHTML`
+- Lint kjøres med `selfHosted`, fordi `update_url` er med for selvdistribusjon
+
+### Trinn 1
+
 **Trinn 1 er ferdig (11. september 2026).** Diagnosen (`dev/diagnose.html`) med samme manifest i begge nettlesere:
 
 | Test | Firefox 153 | Chrome 152 |

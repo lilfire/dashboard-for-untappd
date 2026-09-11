@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard for Untappd</title>
+<link rel="icon" href="../icons/icon-32.png">
+<link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><img src="../icons/icon-32.png" alt="" width="22" height="22"><span>Dashboard for Untappd</span></div>
+    <div class="status">
+      <span id="status" class="status-text" aria-live="polite"></span>
+      <button id="refresh" class="btn primary" type="button" data-i18n="refresh"></button>
+      <a class="btn" href="../options/options.html" data-i18n="settings"></a>
+    </div>
+  </header>
+
+  <h1 id="user-name">&nbsp;</h1>
+
+  <div id="alert" class="alert" role="alert" hidden>
+    <p id="alert-text"></p>
+    <button id="alert-action" class="btn" type="button" hidden></button>
+  </div>
+
+  <p id="loading" class="loading" hidden data-i18n="loadingFirst"></p>
+
+  <main id="content" hidden>
+    <section class="kpis" id="kpis" aria-label="Nøkkeltall"></section>
+
+    <section class="change" id="change"></section>
+
+    <nav class="tabs" role="tablist" id="tabs">
+      <button type="button" role="tab" data-tab="breweries" data-i18n="tab_breweries"></button>
+      <button type="button" role="tab" data-tab="countries" data-i18n="tab_countries"></button>
+      <button type="button" role="tab" data-tab="styles" data-i18n="tab_styles"></button>
+      <button type="button" role="tab" data-tab="recent" data-i18n="tab_recent"></button>
+      <button type="button" role="tab" data-tab="trend" data-i18n="tab_trend"></button>
+      <button type="button" role="tab" data-tab="compare" data-i18n="tab_compare"></button>
+    </nav>
+
+    <section class="panel" id="panel-breweries" role="tabpanel">
+      <div class="dist-head">
+        <h2 data-i18n="dist_title"></h2>
+        <p data-i18n="dist_hint"></p>
+      </div>
+      <div class="dist" id="dist"></div>
+      <div class="controls">
+        <input class="search" id="b-q" type="search" autocomplete="off" data-i18n-placeholder="search_breweries" data-i18n-aria-label="search_breweries">
+        <select id="b-sort" data-i18n-aria-label="sort_countDesc">
+          <option value="count-desc" data-i18n="sort_countDesc"></option>
+          <option value="count-asc" data-i18n="sort_countAsc"></option>
+          <option value="name-asc" data-i18n="sort_nameAsc"></option>
+          <option value="name-desc" data-i18n="sort_nameDesc"></option>
+        </select>
+        <button id="b-reset" class="btn" type="button" hidden data-i18n="reset"></button>
+      </div>
+      <p class="meta" id="b-meta" aria-live="polite"></p>
+      <div class="table-wrap">
+        <table class="list">
+          <thead><tr><th class="rank" data-i18n="col_rank"></th><th data-i18n="col_brewery"></th><th class="bar-col" data-i18n="col_beers"></th></tr></thead>
+          <tbody id="b-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-countries" role="tabpanel" hidden>
+      <div class="controls">
+        <input class="search" id="c-q" type="search" autocomplete="off" data-i18n-placeholder="search_countries" data-i18n-aria-label="search_countries">
+      </div>
+      <p class="meta" id="c-meta"></p>
+      <div class="table-wrap">
+        <table class="list">
+          <thead><tr><th class="rank" data-i18n="col_rank"></th><th data-i18n="col_country"></th><th class="bar-col" data-i18n="col_beers"></th><th class="num" data-i18n="col_share"></th></tr></thead>
+          <tbody id="c-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-styles" role="tabpanel" hidden>
+      <div class="controls">
+        <input class="search" id="s-q" type="search" autocomplete="off" data-i18n-placeholder="search_styles" data-i18n-aria-label="search_styles">
+      </div>
+      <p class="meta" id="s-meta"></p>
+      <div class="families" id="s-rows"></div>
+    </section>
+
+    <section class="panel" id="panel-recent" role="tabpanel" hidden>
+      <p class="meta" data-i18n="recent_hint"></p>
+      <div class="table-wrap">
+        <table class="list recent">
+          <thead><tr><th data-i18n="col_beer"></th><th data-i18n="col_rating"></th><th class="num" data-i18n="col_abv"></th><th class="num" data-i18n="col_date"></th></tr></thead>
+          <tbody id="r-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-trend" role="tabpanel" hidden>
+      <div class="segmented" id="trend-metric" role="group">
+        <button type="button" data-metric="unique" data-i18n="kpi_unique"></button>
+        <button type="button" data-metric="breweries" data-i18n="kpi_breweries"></button>
+        <button type="button" data-metric="countries" data-i18n="kpi_countries"></button>
+        <button type="button" data-metric="styles" data-i18n="kpi_styles"></button>
+      </div>
+      <div class="chart" id="trend-chart"></div>
+      <p class="meta" id="trend-note"></p>
+    </section>
+
+    <section class="panel" id="panel-compare" role="tabpanel" hidden>
+      <form class="controls" id="cmp-form">
+        <input class="search" id="cmp-user" type="text" autocomplete="off" spellcheck="false" data-i18n-placeholder="compare_placeholder" data-i18n-aria-label="compare_placeholder">
+        <button class="btn primary" type="submit" data-i18n="compare_run"></button>
+      </form>
+      <p class="meta" id="cmp-meta" data-i18n="compare_hint"></p>
+      <div id="cmp-out" hidden>
+        <div class="segmented" id="cmp-kind" role="group">
+          <button type="button" data-kind="breweries" data-i18n="tab_breweries"></button>
+          <button type="button" data-kind="countries" data-i18n="tab_countries"></button>
+          <button type="button" data-kind="styles" data-i18n="tab_styles"></button>
+        </div>
+        <p class="cmp-summary" id="cmp-summary"></p>
+        <div class="cmp-cols" id="cmp-cols"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer data-i18n="footer"></footer>
+</div>
+<script src="../lib/api.js"></script>
+<script src="../lib/parse.js"></script>
+<script src="../lib/fetch.js"></script>
+<script src="../lib/store.js"></script>
+<script src="../lib/i18n.js"></script>
+<script src="../lib/html.js"></script>
+<script src="charts.js"></script>
+<script src="views.js"></script>
+<script src="compare.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>

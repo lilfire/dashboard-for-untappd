@@ -1,15 +1,19 @@
-// Firefox laster lib/api.js via manifestet; Chromes service worker må importere selv.
-if (typeof importScripts === 'function' && typeof DFU === 'undefined') importScripts('lib/api.js');
+// Firefox laster lib/*.js via manifestet; Chromes service worker må importere selv.
+if (typeof importScripts === 'function' && typeof DFU === 'undefined') importScripts('lib/api.js', 'lib/store.js');
 
-const api = DFU.api;
-const START_PAGE = 'dev/diagnose.html';
+const { api, store } = DFU;
+const DASHBOARD = 'dashboard/index.html';
 const TAB_TIMEOUT_MS = 30000;
 
-// Faner åpnet av «fetch via tab», nøkkel = tab-ID.
+// Faner åpnet av «hent via fane», nøkkel = tab-ID.
 const pending = new Map();
 
-api.action.onClicked.addListener(() => {
-  api.tabs.create({ url: api.runtime.getURL(START_PAGE) });
+const openDashboard = () => api.tabs.create({ url: api.runtime.getURL(DASHBOARD) });
+
+api.action.onClicked.addListener(openDashboard);
+
+api.runtime.onInstalled.addListener(({ reason }) => {
+  if (reason === 'install') openDashboard();
 });
 
 api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -56,6 +60,6 @@ function handlePageData(data, tabId) {
   const own = data.loggedInUser && data.pageOwner &&
     data.loggedInUser.toLowerCase() === data.pageOwner.toLowerCase();
   if (data.hasData && own) {
-    api.storage.local.set({ lastCapture: { at: Date.now(), via: 'visit', data } });
+    store.save(data.pageOwner, { at: Date.now(), via: 'visit', data }).catch(() => {});
   }
 }

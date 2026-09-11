@@ -1,0 +1,66 @@
+# Ny versjon: øk "version" i manifest.json, commit, og push en tag med samme versjon (f.eks. v1.0.1).
+# Krever repo-hemmelighetene AMO_JWT_ISSUER og AMO_JWT_SECRET (API-nøkler fra addons.mozilla.org).
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint
+
+      - name: Sjekk at taggen stemmer med manifestet
+        id: version
+        run: |
+          VERSION=$(node -p "require('./manifest.json').version")
+          if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "Taggen $GITHUB_REF_NAME stemmer ikke med manifest.json ($VERSION)"; exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Signer for Firefox (unlisted)
+        run: >
+          npx web-ext sign --channel unlisted --approval-timeout 900000
+          --api-key "${{ secrets.AMO_JWT_ISSUER }}" --api-secret "${{ secrets.AMO_JWT_SECRET }}"
+
+      - name: Pakk for Chrome
+        run: npx web-ext build --filename "dashboard-for-untappd-chrome-${{ steps.version.outputs.version }}.zip"
+
+      - name: Lag GitHub-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=${{ steps.version.outputs.version }}
+          XPI=$(ls web-ext-artifacts/*.xpi | head -n1)
+          cp "$XPI" "dashboard-for-untappd-$V.xpi"
+          gh release create "$GITHUB_REF_NAME" "dashboard-for-untappd-$V.xpi" \
+            "web-ext-artifacts/dashboard-for-untappd-chrome-$V.zip" \
+            --title "Dashboard for Untappd $V" --generate-notes
+
+      - name: Oppdater updates.json
+        run: |
+          V=${{ steps.version.outputs.version }}
+          node scripts/update-manifest.js "$V" \
+            "https://github.com/${{ github.repository }}/releases/download/$GITHUB_REF_NAME/dashboard-for-untappd-$V.xpi"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add updates.json
+          git commit -m "updates.json: $V"
+          git push origin main

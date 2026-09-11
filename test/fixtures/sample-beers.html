@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head><title>TestUser's Unique Beer Check-ins on Untappd</title></head>
+<body>
+<header>
+  <div class="nav_user_desktop">
+    <ul>
+      <li><a class="track-click" href="/user/TestUser">My Profile</a></li>
+      <li><a class="track-click" href="/user/TestUser/beers">Beer History</a></li>
+      <li><a class="track-click" href="/logout">Logout</a></li>
+    </ul>
+  </div>
+</header>
+<div class="stats">
+  <a href="/user/TestUser"><span class="stat">1,012</span> <span class="title">Total</span></a>
+  <a href="/user/TestUser/beers"><span class="stat">9</span> <span class="title">Unique</span></a>
+  <a href="/user/TestUser/badges"><span class="stat">42</span> <span class="title">Badges</span></a>
+  <a href="/user/TestUser/friends"><span class="stat">3</span> <span class="title">Friends</span></a>
+</div>
+<select id="brewery_picker">
+  <option value="all">All</option>
+  <option value="101">Eksempel Bryggeri (5)</option>
+  <option value="102">Ølverket &amp; Co (3)</option>
+  <option value="103">Brasserie Test (Belgium) (1)</option>
+</select>
+<select id="style_picker">
+  <option value="all">All</option>
+  <option value="5">IPA - New England / Hazy (6)</option>
+  <option value="9">Stout - Imperial / Double (3)</option>
+</select>
+<select id="country_picker">
+  <option value="all">All</option>
+  <option value="1">Norway (7)</option>
+  <option value="30">Belgium (2)</option>
+</select>
+<div class="beer-item" data-bid="5001">
+  <a class="label" href="/b/eksempel-hazy/5001"><img src="" alt=""></a>
+  <div class="beer-details">
+    <p class="name"><a href="/b/eksempel-hazy/5001">Eksempel Hazy</a></p>
+    <p class="brewery"><a href="/EksempelBryggeri">Eksempel Bryggeri</a></p>
+    <p class="style">IPA - New England / Hazy</p>
+    <div class="ratings">
+      <div class="you"><p>Your Rating (3.75)</p><div class="caps" data-rating="3.75"></div></div>
+      <div class="you"><p>Global Rating (3.91)</p><div class="caps" data-rating="3.90512"></div></div>
+    </div>
+  </div>
+  <div class="details">
+    <p class="abv">6.5% ABV</p>
+    <p class="ibu">N/A IBU</p>
+    <p class="date"> First: <a href="/user/TestUser/checkin/900001/"><abbr class="date-time">Thu, 03 Sep 2026 23:16:28 +0200</abbr></a> </p>
+    <p class="date"> Recent: <a href="/user/TestUser/checkin/900002/"><abbr class="date-time">Fri, 04 Sep 2026 20:00:00 +0200</abbr></a> </p>
+    <p class="check-ins">Total: 2</p>
+  </div>
+</div>
+<div class="beer-item" data-bid="5002">
+  <div class="beer-details">
+    <p class="name"><a href="/b/test-stout/5002">Test Stout</a></p>
+    <p class="brewery"><a href="/OlverketCo">Ølverket &amp; Co</a></p>
+    <p class="style">Stout - Imperial / Double</p>
+    <div class="ratings">
+      <div class="you"><p>Global Rating (4.1)</p><div class="caps" data-rating="4.1"></div></div>
+    </div>
+  </div>
+  <div class="details">
+    <p class="abv">11% ABV</p>
+    <p class="ibu">60 IBU</p>
+    <p class="date"> First: <a href="/user/TestUser/checkin/800001/"><abbr>08/30/26</abbr></a> </p>
+    <p class="date"> Recent: <a href="/user/TestUser/checkin/800001/"><abbr>08/30/26</abbr></a> </p>
+    <p class="check-ins">Total: 1</p>
+  </div>
+</div>
+<a href="#" class="button yellow more more-list-items" data-type="beers" data-user-name="TestUser">Show More</a>
+</body>
+</html>
