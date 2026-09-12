@@ -146,6 +146,9 @@ table.list { width: 100%; border-collapse: collapse; font-variant-numeric: tabul
 .list a.ext:hover { color: var(--amber-ink); }
 .list tr.beers > td { padding: 0 0 0 24px; background: var(--surface); }
 .list tr.beers table.list td { padding: 5px 10px; }
+.list tr.beers .styles { border-left: 2px solid var(--line); }
+.list tr.beers .style > summary { padding-left: 26px; }
+.list tr.beers > td > .meta { padding: 8px 12px; }
 mark { background: var(--amber-soft); color: inherit; border-radius: 2px; }
 .sub-line { display: block; font-size: 13px; color: var(--muted); }
 .rating { white-space: nowrap; }

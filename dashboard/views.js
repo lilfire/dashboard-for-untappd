@@ -185,18 +185,83 @@
   /* ---------- Land ---------- */
   const C = { q: '', rows: [], total: 0, max: 1, isNew: new Set() };
 
+  const openCountries = new Set();
+  const openCountryBreweries = new Set();
+
+  // Bryggeriene i ett land, med ølene, satt sammen av historikken og koblingen øl → land.
+  function breweriesInCountry(country) {
+    const byBeer = root.DFU.countries?.byBeer() ?? {};
+    const beers = root.DFU.yearsView?.state?.history?.beers ?? [];
+    const map = new Map();
+    for (const beer of beers) {
+      if (byBeer[beer.id] !== country) continue;
+      const name = beer.brewery || '?';
+      if (!map.has(name)) map.set(name, []);
+      map.get(name).push(beer);
+    }
+    const c = collator();
+    for (const list of map.values()) list.sort((a, b) => String(b.first ?? '').localeCompare(String(a.first ?? '')));
+    return [...map.entries()].map(([name, list]) => ({ name, beers: list }))
+      .sort((a, b) => b.beers.length - a.beers.length || c.compare(a.name, b.name));
+  }
+
+  function countryDetail(country) {
+    const breweries = breweriesInCountry(country);
+    if (!breweries.length) return html`<p class="meta">${t('countries_noBreweries')}</p>`;
+    const max = breweries[0].beers.length;
+    return html`<div class="styles">${breweries.map(b => {
+      const key = `${country}|${b.name}`;
+      return html`<details class="style" data-cb="${key}"${openCountryBreweries.has(key) ? raw(' open') : ''}>
+        <summary><span class="name">${b.name}</span>${bar(b.beers.length, max)}</summary>
+        ${beerTable(b.beers, x => x.style)}</details>`;
+    })}</div>`;
+  }
+
   function renderCountries() {
     const q = fold(C.q.trim());
     const list = C.rows.filter(r => !q || r.folded.includes(q));
     const pct = r => (r.count / C.total * 100).toLocaleString(i18n.locale(), { maximumFractionDigits: 1 });
-    render($('c-rows'), list.length ? list.map(r => html`<tr>${rankCell(r)}
-      <td>${highlight(r.name, q)}${newTag(C.isNew.has(r.id))}</td>
-      <td>${bar(r.count, C.max)}</td>
-      <td class="num">${pct(r)} %</td></tr>`) : emptyRow(4));
+    const mapped = Object.keys(root.DFU.countries?.byBeer() ?? {}).length > 0;
+    const hasHistory = (root.DFU.yearsView?.state?.history?.beers ?? []).length > 0;
+    const canExpand = mapped && hasHistory;
+
+    const rows = list.flatMap(r => {
+      const open = canExpand && openCountries.has(r.name);
+      const name = canExpand
+        ? html`<button type="button" class="row-toggle" data-country="${r.name}" aria-expanded="${open ? 'true' : 'false'}">${highlight(r.name, q)}</button>`
+        : highlight(r.name, q);
+      const main = html`<tr>${rankCell(r)}
+        <td>${name}${newTag(C.isNew.has(r.id))}</td>
+        <td>${bar(r.count, C.max)}</td>
+        <td class="num">${pct(r)} %</td></tr>`;
+      return open ? [main, html`<tr class="beers"><td colspan="4">${countryDetail(r.name)}</td></tr>`] : [main];
+    });
+    render($('c-rows'), rows.length ? rows : emptyRow(4));
+
+    const hint = canExpand ? '' : ` · ${hasHistory ? t('countries_needSyncHint') : t('countries_needHistory')}`;
     $('c-meta').textContent = q
       ? t('showing', num(list.length), num(C.rows.length))
-      : `${num(C.rows.length)} ${t('kpi_countries').toLowerCase()} · ${t('untappdCounts')}`;
+      : `${num(C.rows.length)} ${t('kpi_countries').toLowerCase()} · ${t('untappdCounts')}${hint}`;
   }
+
+  // Klikk på et land åpner bryggeriene der, og hvert bryggeri kan åpnes videre.
+  document.addEventListener('click', e => {
+    const btn = e.target.closest?.('#c-rows .row-toggle');
+    if (!btn) return;
+    const name = btn.dataset.country;
+    if (openCountries.has(name)) openCountries.delete(name);
+    else openCountries.add(name);
+    renderCountries();
+  });
+
+  document.addEventListener('toggle', e => {
+    const key = e.target?.dataset?.cb;
+    if (!key) return;
+    if (e.target.open) openCountryBreweries.add(key); else openCountryBreweries.delete(key);
+  }, true);
+
+  document.addEventListener('dfu:countries', () => { if (C.rows.length) renderCountries(); });
+  document.addEventListener('dfu:history', () => { if (C.rows.length) renderCountries(); });
 
   /* ---------- Stiler ---------- */
   const S = { q: '', families: [], max: 1, isNew: new Set(), open: new Set() };

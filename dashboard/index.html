@@ -68,6 +68,16 @@
     </section>
 
     <section class="panel" id="panel-countries" role="tabpanel" hidden>
+      <div class="sync">
+        <div class="row">
+          <p class="meta" id="c-sync-text"></p>
+          <span class="row">
+            <button class="btn" id="c-sync-btn" type="button"></button>
+            <button class="btn" id="c-sync-stop" type="button" hidden data-i18n="years_stop"></button>
+          </span>
+        </div>
+        <div class="progress" id="c-progress" hidden><i style="width:0%"></i></div>
+      </div>
       <div class="controls">
         <input class="search" id="c-q" type="search" autocomplete="off" data-i18n-placeholder="search_countries" data-i18n-aria-label="search_countries">
       </div>
@@ -173,6 +183,7 @@
 <script src="views.js"></script>
 <script src="compare.js"></script>
 <script src="years.js"></script>
+<script src="countries.js"></script>
 <script src="report.js"></script>
 <script src="dashboard.js"></script>
 </body>
