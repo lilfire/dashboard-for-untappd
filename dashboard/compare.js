@@ -61,6 +61,7 @@
       K.themName = r.data.pageOwner || name;
       $('cmp-meta').textContent = t('compare_hint');
       renderCompare();
+      root.DFU.yearsView?.setFriend(K.themName);
     } catch (err) {
       $('cmp-meta').textContent = t('err_network', err.message);
     } finally {

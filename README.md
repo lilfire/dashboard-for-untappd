@@ -12,10 +12,28 @@ Nettleserutvidelse for Firefox og Chrome som viser ditt eget Untappd-dashbord, h
 - **Land og stiler:** rangert, med stiler gruppert i familier
 - **Siste øl:** de 25 nyeste, med din rangering mot den globale
 - **Utvikling:** kurve over unike øl, bryggerier, land og stiler over tid
-- **Sammenlign:** felles bryggerier, land og stiler med en venn
+- **År:** årsoppsummering for hvert år, i stil med Recappd
+- **Sammenlign:** felles bryggerier, land og stiler med en venn, og året side om side
 - Norsk og engelsk
 
 Tallene er unike øl, ikke innsjekkinger.
+
+## Årsoppsummering
+
+Fanen **År** viser, for hvert år: nye øl, nye bryggerier og nye stiler, snittrangering mot Untappds snitt,
+snitt alkoholstyrke og sterkeste øl, best og lavest rangerte, topp 5, mest drukne stiler og bryggerier,
+første og siste øl i året, og stolper per måned og ukedag.
+
+Dette krever hele ølhistorikken din, og Untappd gir bare 25 øl om gangen. Første henting tar noen minutter
+(én side i sekundet og et halvt), og du kan stoppe underveis — det som er hentet, blir lagret. Senere hentes
+bare det som er nytt. Historikken lagres bare i nettleseren din.
+
+Under **Sammenlign** kan du hente en venns historikk på samme måte og se året side om side, med antall øl
+dere begge har hatt det året.
+
+Tallene er øl du smakte **for første gang** det året. Untappds egen Recappd teller alle unike øl du sjekket
+inn i året, også gjengangere, så tallene vil avvike noe. Steder, byer, merker og gjentatte innsjekkinger
+finnes ikke i ølhistorikken, og er derfor ikke med.
 
 ## Installer
 

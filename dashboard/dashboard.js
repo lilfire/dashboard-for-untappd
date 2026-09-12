@@ -3,7 +3,7 @@
   const { t } = i18n;
   const $ = id => document.getElementById(id);
   const ORIGINS = { origins: ['https://untappd.com/*'] };
-  const TABS = ['breweries', 'countries', 'styles', 'recent', 'trend', 'compare'];
+  const TABS = [...document.querySelectorAll('#tabs [role="tab"]')].map(b => b.dataset.tab);
 
   let settings = await store.getSettings();
   let user = null;
@@ -188,6 +188,7 @@
   i18n.apply();
   views.init();
   compare.init();
+  DFU.yearsView.init();
   $('tabs').addEventListener('click', e => { const b = e.target.closest('[role="tab"]'); if (b) selectTab(b.dataset.tab); });
   $('trend-metric').addEventListener('click', e => {
     const b = e.target.closest('button[data-metric]');

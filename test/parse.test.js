@@ -69,6 +69,25 @@ test('parseUntappdDate', () => {
   assert.deepEqual(parse.parseUntappdDate('N/A'), { date: null, at: null });
 });
 
+test('tolker fragmentet fra «Show More»', () => {
+  // Fragmentet har ingen nedtrekkslister, men samme ølrader – og skriver «You Rating».
+  const d = parse.parseBeersPage(docOf(fixture('sample-more-beer.html')));
+  assert.equal(d.hasData, false, 'fragmentet har ingen filtre');
+  assert.equal(d.recent.length, 2);
+  const [a, b] = d.recent;
+  assert.equal(a.ratingYou, 3.5, '«You Rating» må telle som din rangering');
+  assert.equal(a.ratingGlobal, 3.75);
+  assert.equal(a.brewery, 'Pivovar U Fleků');
+  assert.equal(a.breweryUrl, '/w/pivovar-u-fleku/6265');
+  assert.equal(a.first, '2022-09-03');
+  assert.equal(a.firstCheckinId, '500001');
+  assert.equal(b.ratingYou, null, 'uten egen rangering');
+  assert.equal(b.ratingGlobal, 3.9);
+  assert.equal(b.first, '2025-01-10');
+  assert.equal(b.recent, '2025-01-12');
+  assert.equal(b.checkins, 2);
+});
+
 // Valgfri test mot en lagret kopi av din egen ølside (ligger i .gitignore).
 const privateFixture = path.join(__dirname, 'fixtures', 'private-beers.html');
 test('ekte ølside (private-beers.html)', { skip: !fs.existsSync(privateFixture) && 'ingen private-beers.html' }, () => {

@@ -38,6 +38,7 @@
       <button type="button" role="tab" data-tab="styles" data-i18n="tab_styles"></button>
       <button type="button" role="tab" data-tab="recent" data-i18n="tab_recent"></button>
       <button type="button" role="tab" data-tab="trend" data-i18n="tab_trend"></button>
+      <button type="button" role="tab" data-tab="years" data-i18n="tab_years"></button>
       <button type="button" role="tab" data-tab="compare" data-i18n="tab_compare"></button>
     </nav>
 
@@ -123,6 +124,30 @@
         <p class="cmp-summary" id="cmp-summary"></p>
         <div class="cmp-cols" id="cmp-cols"></div>
       </div>
+      <div id="cmp-years" hidden>
+        <h2 data-i18n="cmpYears_title"></h2>
+        <p class="meta" id="cmp-year-meta"></p>
+        <p><button class="btn" id="cmp-year-btn" type="button"></button></p>
+        <div class="table-wrap"><table class="year-cmp" id="cmp-year-table"></table></div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-years" role="tabpanel" hidden>
+      <div class="sync">
+        <div class="row">
+          <p class="meta" id="y-sync-text"></p>
+          <span class="row">
+            <button class="btn primary" id="y-sync-btn" type="button"></button>
+            <button class="btn" id="y-sync-stop" type="button" hidden data-i18n="years_stop"></button>
+          </span>
+        </div>
+        <div class="progress" id="y-progress" hidden><i style="width:0%"></i></div>
+      </div>
+      <div class="year-bar" id="y-bar" hidden>
+        <select id="y-year" aria-label="År"></select>
+        <span class="meta" id="y-summary"></span>
+      </div>
+      <div class="cards" id="y-cards"></div>
     </section>
   </main>
 
@@ -134,9 +159,12 @@
 <script src="../lib/store.js"></script>
 <script src="../lib/i18n.js"></script>
 <script src="../lib/html.js"></script>
+<script src="../lib/years.js"></script>
+<script src="../lib/history.js"></script>
 <script src="charts.js"></script>
 <script src="views.js"></script>
 <script src="compare.js"></script>
+<script src="years.js"></script>
 <script src="dashboard.js"></script>
 </body>
 </html>

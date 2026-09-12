@@ -180,4 +180,45 @@ mark { background: var(--amber-soft); color: inherit; border-radius: 2px; }
 
 footer { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; }
 
+/* År */
+.year-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.year-bar select { min-width: 110px; }
+.sync { display: grid; gap: 6px; padding: 12px 14px; border: 1px dashed var(--line); border-radius: 8px; }
+.sync .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+.progress { height: 6px; background: var(--track); border-radius: 3px; overflow: hidden; }
+.progress i { display: block; height: 100%; background: var(--amber); border-radius: 3px; transition: width .2s; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px; display: grid; gap: 4px; align-content: start; }
+.card .label { font-size: 12px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.card .value { font-family: var(--display); font-weight: 700; font-size: 30px; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.card .value.small { font-size: 20px; line-height: 1.2; }
+.card .note { font-size: 13px; color: var(--muted); }
+.card.wide { grid-column: 1 / -1; }
+.card ol { margin: 4px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; counter-reset: rank; }
+.card ol li { display: grid; grid-template-columns: 1.6em minmax(0, 1fr) auto; gap: 8px; align-items: baseline; border-bottom: 1px solid var(--line); padding-bottom: 3px; }
+.card ol li:last-child { border-bottom: 0; }
+.card ol li::before { counter-increment: rank; content: counter(rank); color: var(--muted); font-variant-numeric: tabular-nums; }
+.card ol li b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.card ol li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card .chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+
+.bars { display: grid; gap: 4px; align-items: end; height: 130px; margin-top: 6px; }
+.bars.months { grid-template-columns: repeat(12, 1fr); }
+.bars.weekdays { grid-template-columns: repeat(7, 1fr); }
+.bars .b { display: grid; align-content: end; gap: 4px; height: 100%; text-align: center; }
+.bars .b i { display: block; background: var(--amber); border-radius: 3px 3px 0 0; min-height: 2px; }
+.bars .b.peak i { background: var(--amber-ink); }
+.bars .b em { font-style: normal; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar-labels { display: grid; gap: 4px; margin-top: 4px; font-size: 11px; color: var(--muted); text-align: center; }
+.bar-labels.months { grid-template-columns: repeat(12, 1fr); }
+.bar-labels.weekdays { grid-template-columns: repeat(7, 1fr); }
+
+/* Årssammenligning */
+.year-cmp { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.year-cmp th, .year-cmp td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: right; }
+.year-cmp th:first-child, .year-cmp td:first-child { text-align: left; }
+.year-cmp thead th { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.year-cmp td.win { color: var(--new); font-weight: 600; }
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

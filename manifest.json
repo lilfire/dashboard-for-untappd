@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Dashboard for Untappd",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Your own Untappd dashboard: breweries, countries and styles, fetched with your own login. Not affiliated with Untappd.",
   "homepage_url": "https://github.com/lilfire/dashboard-for-untappd",
   "icons": {

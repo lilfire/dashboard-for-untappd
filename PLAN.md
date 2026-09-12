@@ -30,6 +30,27 @@ Antallene er **unike øl**, ikke innsjekkinger. Kontrolltall for Lilfire: summen
 Datoer: rå HTML har `<abbr class="date-time">Thu, 03 Sep 2026 23:16:28 +0200</abbr>`. Sidens JavaScript gjør det om til
 `09/03/26` (MM/DD/YY) etter lasting. `parse.js` leser begge. Lenken rundt datoen gir innsjekkings-ID-en.
 
+## Versjon 1.1: årsoppsummering
+
+Årsfane i stil med [Recappd](https://recappd.untappd.com/mine), og året side om side i sammenligningen.
+
+**Datakilde:** `GET /profile/more_beer/<bruker>/<offset>?sort=date` — samme kall som «Show More»-knappen.
+Returnerer rå HTML med 25 `.beer-item` per kall, med fullt tidsstempel. Vanlige sider ignorerer `?page=`/`?offset=`.
+For 2 711 øl blir det 109 kall (~5,5 MB). `lib/history.js` henter med 1,5 sekund pause, kan avbrytes
+(det hentede lagres), og stopper tidlig når en hel side er kjent fra før. Endepunktet er udokumentert;
+brukeren er informert i README, og henting skjer bare når brukeren trykker.
+
+**Fallgruve:** fragmentet skriver «You Rating», mens ølsiden skriver «Your Rating». `parse.js` godtar begge
+(test: `sample-more-beer.html`).
+
+**Utregning:** `lib/years.js` (rene funksjoner, testet) grupperer på året for første innsjekking og gir nye øl,
+nye bryggerier, nye stiler, snittrangering mot global, snitt alkohol, sterkeste, topp 5, lavest rangerte,
+toppstiler, toppbryggerier, måneder, ukedager, første og siste øl. `compareYear` gir felles og unike øl.
+
+**Ikke mulig fra denne kilden:** steder, byer, merker og gjentatte innsjekkinger (Recappd har dem fra
+innsjekkingsfeeden, som ville doblet antall kall). Våre «nye øl i året» er øl smakt første gang det året,
+mens Recappd teller alle unike øl sjekket inn det året.
+
 ## Status
 
 **Versjon 1.0.0 er ferdig bygget (11. september 2026).**
