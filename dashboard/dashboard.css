@@ -206,8 +206,10 @@ footer { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line)
 .bars { display: grid; gap: 4px; align-items: end; height: 130px; margin-top: 6px; }
 .bars.months { grid-template-columns: repeat(12, 1fr); }
 .bars.weekdays { grid-template-columns: repeat(7, 1fr); }
-.bars .b { display: grid; align-content: end; gap: 4px; height: 100%; text-align: center; }
-.bars .b i { display: block; background: var(--amber); border-radius: 3px 3px 0 0; min-height: 2px; }
+/* Fleks-kolonne med fast høyde: da har prosenthøyden på søylen noe å regne mot. */
+.bars .b { display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; height: 100%; text-align: center; }
+.bars .b i { display: block; width: 100%; background: var(--amber); border-radius: 3px 3px 0 0; min-height: 2px; flex: 0 0 auto; }
+.bars .b em { flex: 0 0 auto; }
 .bars .b.peak i { background: var(--amber-ink); }
 .bars .b em { font-style: normal; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .bar-labels { display: grid; gap: 4px; margin-top: 4px; font-size: 11px; color: var(--muted); text-align: center; }
