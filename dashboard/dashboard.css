@@ -135,6 +135,17 @@ table.list { width: 100%; border-collapse: collapse; font-variant-numeric: tabul
 .bar { flex: 1; height: 6px; background: var(--track); border-radius: 3px; overflow: hidden; min-width: 36px; }
 .bar i { display: block; height: 100%; background: var(--amber); border-radius: 3px; }
 .tag-new { margin-left: 6px; padding: 0 6px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--new-soft); color: var(--new); }
+
+/* Utvidbar bryggerirad */
+.row-toggle { appearance: none; border: 0; background: none; padding: 0 0 0 14px; cursor: pointer; font: inherit; color: inherit;
+  text-align: left; position: relative; }
+.row-toggle::before { content: "▸"; position: absolute; left: 0; color: var(--muted); font-size: 11px; }
+.row-toggle[aria-expanded="true"]::before { content: "▾"; }
+.row-toggle:hover { color: var(--amber-ink); }
+.list a.ext { margin-left: 6px; color: var(--muted); text-decoration: none; font-size: 12px; }
+.list a.ext:hover { color: var(--amber-ink); }
+.list tr.beers > td { padding: 0 0 0 24px; background: var(--surface); }
+.list tr.beers table.list td { padding: 5px 10px; }
 mark { background: var(--amber-soft); color: inherit; border-radius: 2px; }
 .sub-line { display: block; font-size: 13px; color: var(--muted); }
 .rating { white-space: nowrap; }

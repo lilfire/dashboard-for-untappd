@@ -75,6 +75,55 @@
     }));
   }
 
+  const openBreweries = new Set();
+  const MAX_BEERS_PER_ROW = 300;
+
+  // Ølene per bryggeri kommer fra hele ølhistorikken, som hentes under fanen «År».
+  // Navn er hovednøkkelen, siden bryggeri-ID bare finnes i sidene som hentes med «Show More».
+  function beersByBrewery() {
+    const beers = root.DFU.yearsView?.state?.history?.beers ?? [];
+    const byId = new Map();
+    const byName = new Map();
+    const push = (map, key, beer) => {
+      if (!key) return;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(beer);
+    };
+    for (const beer of beers) {
+      push(byName, fold(beer.brewery ?? ''), beer);
+      push(byId, String(beer.breweryUrl ?? '').match(/\/(\d+)\/?$/)?.[1] ?? '', beer);
+    }
+    const newestFirst = (a, b) => String(b.first ?? '').localeCompare(String(a.first ?? ''));
+    for (const list of byName.values()) list.sort(newestFirst);
+    for (const list of byId.values()) list.sort(newestFirst);
+    return { byId, byName, count: beers.length };
+  }
+
+  // Ølliste brukt av utvidede rader: dato, navn med undertekst, og din rangering.
+  function beerTable(list, subline) {
+    const fmt = v => (v == null ? '–' : v.toLocaleString(i18n.locale(), { maximumFractionDigits: 2 }));
+    const rows = list.slice(0, MAX_BEERS_PER_ROW).map(b => html`<tr>
+      <td class="num">${b.first ? i18n.date(`${b.first}T12:00:00`) : '–'}</td>
+      <td><a href="${UNTAPPD}${b.url ?? ''}" target="_blank" rel="noopener">${b.name}</a>
+        <span class="sub-line">${subline(b)}</span></td>
+      <td class="num">${fmt(b.ratingYou)}</td></tr>`);
+    const more = list.length > MAX_BEERS_PER_ROW
+      ? html`<tr><td colspan="3" class="meta">… +${num(list.length - MAX_BEERS_PER_ROW)}</td></tr>` : '';
+    return html`<table class="list"><tbody>${rows}${more}</tbody></table>`;
+  }
+
+  // Klikk på et bryggeri åpner eller lukker ølene fra det bryggeriet.
+  document.addEventListener('click', e => {
+    const btn = e.target.closest?.('#b-rows .row-toggle');
+    if (!btn) return;
+    const id = btn.dataset.brewery;
+    if (openBreweries.has(id)) openBreweries.delete(id);
+    else openBreweries.add(id);
+    renderBreweries();
+  });
+
+  document.addEventListener('dfu:history', () => { if (B.rows.length) renderBreweries(); });
+
   function renderBreweries() {
     const q = fold(B.q.trim());
     const b = BUCKETS.find(x => x.id === B.bucket);
@@ -86,14 +135,32 @@
       ? (x, y) => sign * c.compare(x.name, y.name)
       : (x, y) => sign * (x.count - y.count) || c.compare(x.name, y.name));
 
-    render($('b-rows'), list.length ? list.map(r => html`<tr>${rankCell(r)}
-      <td><a href="${UNTAPPD}/brewery/${encodeURIComponent(r.id)}" target="_blank" rel="noopener">${highlight(r.name, q)}</a>${newTag(B.isNew.has(r.id))}</td>
-      <td>${bar(r.count, B.max)}</td></tr>`) : emptyRow(3));
+    const beers = beersByBrewery();
+    const hasHistory = beers.count > 0;
+    const forBrewery = r => beers.byName.get(fold(r.name)) ?? beers.byId.get(String(r.id)) ?? [];
+
+    const rows = list.flatMap(r => {
+      const open = hasHistory && openBreweries.has(r.id);
+      const name = hasHistory
+        ? html`<button type="button" class="row-toggle" data-brewery="${r.id}" aria-expanded="${open ? 'true' : 'false'}">${highlight(r.name, q)}</button>`
+        : highlight(r.name, q);
+      const main = html`<tr>${rankCell(r)}
+        <td>${name}${newTag(B.isNew.has(r.id))}
+          <a class="ext" href="${UNTAPPD}/brewery/${encodeURIComponent(r.id)}" target="_blank" rel="noopener" title="Untappd">↗</a></td>
+        <td>${bar(r.count, B.max)}</td></tr>`;
+      if (!open) return [main];
+      const list2 = forBrewery(r);
+      return [main, html`<tr class="beers"><td colspan="3">${list2.length
+        ? beerTable(list2, b2 => b2.style)
+        : html`<p class="meta">${t('breweries_noBeers')}</p>`}</td></tr>`];
+    });
+    render($('b-rows'), rows.length ? rows : emptyRow(3));
 
     const filtered = q || b;
-    $('b-meta').textContent = filtered
+    $('b-meta').textContent = (filtered
       ? `${t('showing', num(list.length), num(B.rows.length))} · ${t('totalBeers', num(sum(list)))}`
-      : `${num(B.rows.length)} ${t('kpi_breweries').toLowerCase()} · ${t('totalBeers', num(B.total))}`;
+      : `${num(B.rows.length)} ${t('kpi_breweries').toLowerCase()} · ${t('totalBeers', num(B.total))}`)
+      + (hasHistory ? '' : ` · ${t('breweries_needHistory')}`);
     $('b-reset').hidden = !(filtered || B.sort !== 'count-desc');
     $('b-sort').value = B.sort;
     for (const el of document.querySelectorAll('.bucket')) el.setAttribute('aria-pressed', String(el.dataset.bucket === B.bucket));
