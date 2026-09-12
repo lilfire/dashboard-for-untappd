@@ -5,10 +5,15 @@
   const { t } = i18n;
   const $ = id => document.getElementById(id);
 
-  async function testFetch(user) {
+  // Untappd krever headeren «Show More» sender, men den kan utløse en CORS-preflight.
+  // Vi tester derfor begge varianter, så rapporten viser hvilken som slipper gjennom.
+  async function testFetch(user, xhrHeader) {
     const url = `https://untappd.com/profile/more_beer/${encodeURIComponent(user || 'x')}/25?sort=date`;
     try {
-      const res = await fetch(url, { credentials: 'include', cache: 'no-store', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+      const res = await fetch(url, {
+        credentials: 'include', cache: 'no-store',
+        headers: xhrHeader ? { 'X-Requested-With': 'XMLHttpRequest' } : undefined,
+      });
       const text = await res.text();
       const doc = new DOMParser().parseFromString(text, 'text/html');
       const beers = parse.parseBeersPage(doc, null).recent;
@@ -51,7 +56,8 @@
         statusText: $('y-sync-text')?.textContent ?? null,
         buttonDisabled: $('y-sync-btn')?.disabled ?? null,
       },
-      historyFetch: await testFetch(s.user || settings.username || lastUser),
+      historyFetchWithHeader: await testFetch(s.user || settings.username || lastUser, true),
+      historyFetchNoHeader: await testFetch(s.user || settings.username || lastUser, false),
     };
   }
 
