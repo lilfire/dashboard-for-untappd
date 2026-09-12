@@ -149,15 +149,25 @@
 
   function renderTrend() {
     for (const b of document.querySelectorAll('#trend-metric button')) b.setAttribute('aria-pressed', String(b.dataset.metric === trendMetric));
-    const days = Object.entries(state?.daily ?? {}).sort(([a], [b]) => a.localeCompare(b));
-    const points = days.map(([date, v]) => ({ date, value: v[trendMetric] })).filter(p => p.value != null);
+
+    // Har vi hele ølhistorikken, viser vi den måned for måned. Ellers bare dagene siden utvidelsen ble installert.
+    const beers = DFU.yearsView?.state?.history?.beers ?? [];
+    const fromHistory = beers.length > 0 && ['unique', 'breweries', 'styles'].includes(trendMetric);
+    const points = fromHistory
+      ? DFU.years.timeline(beers).map(p => ({ date: p.date, value: trendMetric === 'unique' ? p.unique : p[trendMetric] }))
+      : Object.entries(state?.daily ?? {}).sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, v]) => ({ date, value: v[trendMetric] })).filter(p => p.value != null);
+
     if (!points.length) { $('trend-chart').replaceChildren(); $('trend-note').textContent = t('trend_empty'); return; }
     charts.lineChart($('trend-chart'), points, {
       fmtValue: v => i18n.number(v),
-      fmtDate: d => i18n.date(`${d}T12:00:00`, { day: 'numeric', month: 'short' }),
+      fmtDate: d => i18n.date(`${d}T12:00:00`, fromHistory ? { month: 'short', year: '2-digit' } : { day: 'numeric', month: 'short' }),
     });
-    $('trend-note').textContent = points.length < 2 ? t('trend_empty') : t('trend_hint');
+    $('trend-note').textContent = fromHistory ? t('trend_history') : points.length < 2 ? t('trend_empty') : t('trend_hint');
   }
+
+  // Årsfanen kaller denne når historikken er hentet.
+  DFU.dashboardTrend = renderTrend;
 
   function render() {
     const snap = latest();

@@ -66,6 +66,25 @@ test('sammenligner ett år mellom to personer', () => {
   assert.deepEqual(c.onlyTheirs.map(b => b.id), ['9']);
 });
 
+test('timeline gir kumulativ utvikling måned for måned', () => {
+  const line = years.timeline([
+    beer(1, '2024-11-05'),
+    beer(2, '2025-01-10', { brewery: 'Bryggeri B', breweryUrl: '/B', style: 'Stout - Oatmeal' }),
+    beer(3, '2025-01-20'),
+  ]);
+  assert.deepEqual(line.map(p => p.date), ['2024-11-01', '2024-12-01', '2025-01-01']);
+  assert.deepEqual(line.map(p => p.unique), [1, 1, 3], 'desember uten nye øl beholder forrige verdi');
+  assert.deepEqual(line.map(p => p.breweries), [1, 1, 2]);
+  assert.deepEqual(line.map(p => p.styles), [1, 1, 2]);
+});
+
+test('timeline over årsskifte og uten data', () => {
+  const line = years.timeline([beer(1, '2023-12-31'), beer(2, '2024-02-01')]);
+  assert.deepEqual(line.map(p => p.date), ['2023-12-01', '2024-01-01', '2024-02-01']);
+  assert.deepEqual(years.timeline([]), []);
+  assert.deepEqual(years.timeline(null), []);
+});
+
 test('tåler tom historikk', () => {
   assert.deepEqual(years.buildYears([]).years, []);
   assert.deepEqual(years.buildYears(null).years, []);

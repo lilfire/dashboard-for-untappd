@@ -156,6 +156,36 @@ $('visit-run').addEventListener('click', e => guarded(e.target, async () => {
   judge('visit-verdict', summarize(lastCapture.data));
 }));
 
+$('hist-run').addEventListener('click', e => guarded(e.target, async () => {
+  const u = requireUsername('hist-verdict');
+  if (!u) return;
+  verdict('hist-verdict', 'warn', 'Henter …');
+  const url = `https://untappd.com/profile/more_beer/${encodeURIComponent(u)}/25?sort=date`;
+  try {
+    const res = await fetch(url, { credentials: 'include', cache: 'no-store', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+    const text = await res.text();
+    const doc = new DOMParser().parseFromString(text, 'text/html');
+    const items = [...doc.querySelectorAll('.beer-item')];
+    const parsed = DFU.parse.parseBeersPage(doc, null).recent;
+    const view = {
+      status: res.status, finalUrl: res.url, redirected: res.redirected, bytes: text.length,
+      cfMitigated: res.headers.get('cf-mitigated'), contentType: res.headers.get('content-type'),
+      beerItems: items.length, parsed: parsed.length,
+      withDate: parsed.filter(b => b.first).length, withRating: parsed.filter(b => b.ratingYou != null).length,
+      firstBeer: parsed[0] ? { name: parsed[0].name, first: parsed[0].first, ratingYou: parsed[0].ratingYou } : null,
+      bodyStart: text.slice(0, 160),
+    };
+    output('hist-out', view);
+    record('history', view);
+    if (res.status !== 200) verdict('hist-verdict', 'bad', `Untappd svarte ${res.status}.`);
+    else if (!parsed.length) verdict('hist-verdict', 'bad', 'Svaret inneholdt ingen øl. Se bodyStart under.');
+    else verdict('hist-verdict', 'ok', `OK: ${parsed.length} øl, ${view.withDate} med dato, ${view.withRating} med din rangering.`);
+  } catch (err) {
+    verdict('hist-verdict', 'bad', `Feil: ${err.message}`);
+    record('history', { error: String(err), url });
+  }
+}));
+
 $('copy').addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText($('result').value);

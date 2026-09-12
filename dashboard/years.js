@@ -89,6 +89,7 @@
     S.built = yearsLib.buildYears(S.history?.beers ?? []);
     renderSync();
     renderYearPicker();
+    root.DFU.dashboardTrend?.();
     if (!S.built.years.length && S.history?.beers?.length) $('y-summary').textContent = t('years_none');
   }
 
