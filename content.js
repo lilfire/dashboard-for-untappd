@@ -7,9 +7,10 @@
   DFU.api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg?.type === 'dfu:ping') { sendResponse({ ok: true, url: location.href }); return false; }
     if (msg?.type !== 'dfu:fetch-history') return false;
+    // «more_beer» krever headeren «Show More» sender. Vanlige sider skal hentes uten.
     fetch(msg.url, {
       credentials: 'include', cache: 'no-store',
-      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      headers: msg.url.includes('/profile/more_beer/') ? { 'X-Requested-With': 'XMLHttpRequest' } : undefined,
     })
       .then(async res => {
         const html = await res.text();
