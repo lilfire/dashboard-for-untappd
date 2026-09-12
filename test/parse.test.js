@@ -49,6 +49,23 @@ test('tolker siste øl med begge datoformater', () => {
   assert.equal(b.firstAt, null);
 });
 
+test('«Their Rating» på en annen brukers side teller som sideeierens rangering', () => {
+  const html = `<div class="beer-item" data-bid="77"><div class="beer-details">
+      <p class="name"><a href="/b/x/77">Vennens øl</a></p><p class="brewery"><a href="/w/y/1">Bryggeri</a></p>
+      <p class="style">IPA - American</p>
+      <div class="ratings">
+        <div class="you"><p>Their Rating (4)</p><div class="caps" data-rating="4"></div></div>
+        <div class="you"><p>Global Rating (3.83)</p><div class="caps" data-rating="3.83"></div></div>
+      </div></div>
+      <div class="details"><p class="abv">6% ABV</p><p class="ibu">N/A IBU</p>
+      <p class="date"> First: <a href="/user/Venn/checkin/1/"><abbr>Fri, 10 Jan 2025 19:30:00 +0100</abbr></a> </p>
+      <p class="date"> Recent: <a href="/user/Venn/checkin/1/"><abbr>Fri, 10 Jan 2025 19:30:00 +0100</abbr></a> </p>
+      <p class="check-ins">Total: 1</p></div></div>`;
+  const [beer] = parse.parseBeersPage(docOf(html)).recent;
+  assert.equal(beer.ratingYou, 4, 'vennens egen rangering');
+  assert.equal(beer.ratingGlobal, 3.83);
+});
+
 test('utlogget side', () => {
   const d = parse.parseBeersPage(docOf('<html><head><title>Untappd</title></head><body><a href="/login">Sign In</a></body></html>'));
   assert.equal(d.loggedIn, false);

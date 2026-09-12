@@ -167,7 +167,8 @@
     if (!name) return;
 
     $('cmp-year-btn').textContent = t('cmpYears_btn', name);
-    $('cmp-year-btn').hidden = S.syncing || !!S.friend.built;
+    // Knappen blir stående, så historikken kan hentes på nytt når noe er oppdatert.
+    $('cmp-year-btn').hidden = S.syncing;
     if (!S.friend.built) {
       $('cmp-year-meta').textContent = t('cmpYears_hint', name);
       $('cmp-year-bar').hidden = true;
@@ -233,7 +234,8 @@
     try {
       const known = (await store.loadHistory(name)).beers;
       const res = await history.sync(name, {
-        known, full: !known.length, expected: null,
+        // Alltid full henting: da erstattes også eldre rader som manglet vennens rangering.
+        known, full: true, expected: null,
         onProgress: p => { $('cmp-year-meta').textContent = t('years_syncing', num(p.pages), num(p.fetched)); },
       });
       S.friend.history = await store.saveHistory(name, { beers: res.beers, complete: res.complete });
