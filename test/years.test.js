@@ -66,6 +66,22 @@ test('sammenligner ett år mellom to personer', () => {
   assert.deepEqual(c.onlyTheirs.map(b => b.id), ['9']);
 });
 
+test('monthBreakdown gir dager og øl for én måned', () => {
+  const list = [beer(1, '2025-05-01'), beer(2, '2025-05-17'), beer(3, '2025-05-17'), beer(4, '2025-06-02'), beer(5, '2024-05-17')];
+  const may = years.monthBreakdown(list, 2025, 4);
+  assert.equal(may.days, 31);
+  assert.equal(may.counts.length, 31);
+  assert.equal(may.counts[0], 1, '1. mai');
+  assert.equal(may.counts[16], 2, '17. mai');
+  assert.equal(may.counts.reduce((a, b) => a + b, 0), 3, 'bare mai 2025');
+  assert.deepEqual(may.list.map(b => b.id), ['1', '2', '3']);
+
+  assert.equal(years.monthBreakdown(list, 2025, 1).days, 28, 'februar 2025');
+  assert.equal(years.monthBreakdown(list, 2024, 1).days, 29, 'februar i skuddår');
+  assert.equal(years.monthBreakdown(list, 2025, 0).list.length, 0, 'måned uten øl');
+  assert.equal(years.monthBreakdown(null, 2025, 4).list.length, 0);
+});
+
 test('timeline gir kumulativ utvikling måned for måned', () => {
   const line = years.timeline([
     beer(1, '2024-11-05'),

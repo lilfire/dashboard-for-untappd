@@ -32,12 +32,41 @@
     return Array.from({ length: 7 }, (_, d) => f.format(new Date(Date.UTC(2024, 8, 1 + d))));
   };
 
-  function bars(values, labels, peak, cls) {
+  function bars(values, labels, peak, cls, clickable = false) {
     const max = Math.max(1, ...values);
-    return html`<div class="bars ${cls}">${values.map((v, i) => html`<div class="b${i === peak && v > 0 ? ' peak' : ''}">
-        <em>${v || ''}</em><i style="height:${Math.round(v / max * 100)}%"></i></div>`)}</div>
+    const height = v => `height:${Math.round(v / max * 100)}%`;
+    const bar = (v, i) => (clickable
+      ? html`<button type="button" class="b${i === peak && v > 0 ? ' peak' : ''}${i === S.month ? ' sel' : ''}" data-month="${i}">
+          <em>${v || ''}</em><i style="${height(v)}"></i></button>`
+      : html`<div class="b${i === peak && v > 0 ? ' peak' : ''}"><em>${v || ''}</em><i style="${height(v)}"></i></div>`);
+    return html`<div class="bars ${cls}">${values.map(bar)}</div>
       <div class="bar-labels ${cls}">${labels.map(l => html`<span>${l}</span>`)}</div>`;
   }
+
+  // Dagvisning for én måned, åpnet ved å klikke på en månedssøyle.
+  function monthCard(year) {
+    const { list, counts } = yearsLib.monthBreakdown(S.history?.beers ?? [], year, S.month);
+    const labels = counts.map((_, i) => (i === 0 || (i + 1) % 5 === 0 ? String(i + 1) : ''));
+    const peak = list.length ? counts.indexOf(Math.max(...counts)) : -1;
+    return html`<div class="card wide" id="y-month">
+      <span class="label">${t('month_title', monthLabels()[S.month], year)}</span>
+      <span class="note">${t('month_count', num(list.length))}</span>
+      ${bars(counts, labels, peak, 'days')}
+      <div class="table-wrap"><table class="list"><tbody>${list.map(b => html`<tr>
+        <td class="num">${i18n.date(`${b.first}T12:00:00`, { day: 'numeric', month: 'short' })}</td>
+        <td>${beerLink(b)}<span class="sub-line">${b.brewery} · ${b.style}</span></td>
+        <td class="num">${rate(b.ratingYou)}</td></tr>`)}</tbody></table></div></div>`;
+  }
+
+  // Klikk på en månedssøyle åpner eller lukker dagvisningen.
+  document.addEventListener('click', e => {
+    const btn = e.target.closest?.('#panel-years .bars.months .b');
+    if (!btn) return;
+    const month = Number(btn.dataset.month);
+    S.month = S.month === month ? null : month;
+    renderYear();
+    if (S.month != null) document.getElementById('y-month')?.scrollIntoView({ block: 'nearest' });
+  });
 
   const listCard = (label, items, value, extra = '') => html`<div class="card ${extra}">
     <span class="label">${label}</span>
@@ -68,7 +97,9 @@
       html`<div class="card"><span class="label">${t('card_firstLast')}</span>
         <span class="note">${t('card_first', '')} ${beerLink(y.firstBeer)} · ${y.firstBeer ? i18n.date(y.firstBeer.first) : ''}</span>
         <span class="note">${t('card_last', '')} ${beerLink(y.lastBeer)} · ${y.lastBeer ? i18n.date(y.lastBeer.first) : ''}</span></div>`,
-      html`<div class="card wide"><span class="label">${t('card_months')}</span>${bars(y.months, monthLabels(), y.busiestMonth, 'months')}</div>`,
+      html`<div class="card wide"><span class="label">${t('card_months')}</span><span class="note">${t('card_monthsHint')}</span>
+        ${bars(y.months, monthLabels(), y.busiestMonth, 'months', true)}</div>`,
+      S.month != null ? monthCard(y.year) : '',
       html`<div class="card wide"><span class="label">${t('card_weekdays')}</span>${bars(y.weekdays, weekdayLabels(), y.busiestWeekday, 'weekdays')}</div>`,
     ];
     render($('y-cards'), cards);
