@@ -28,6 +28,23 @@
     }
   }
 
+  // Tester reserven: hentingen kjørt inne i en Untappd-fane, med samme opphav som siden selv.
+  async function testViaTab(user) {
+    const name = encodeURIComponent(user || 'x');
+    try {
+      const open = await api.runtime.sendMessage({ type: 'dfu:history-open', url: `https://untappd.com/user/${name}/beers` });
+      if (!open?.ok) return { ok: false, open };
+      const page = await api.runtime.sendMessage({
+        type: 'dfu:history-page', tabId: open.tabId,
+        url: `https://untappd.com/profile/more_beer/${name}/25?sort=date`,
+      });
+      api.runtime.sendMessage({ type: 'dfu:history-close', tabId: open.tabId }).catch(() => {});
+      return { ok: !!page?.ok, status: page?.status ?? null, bytes: page?.bytes ?? null, beers: page?.beers?.length ?? 0, error: page?.error ?? null };
+    } catch (err) {
+      return { error: `${err.name}: ${err.message}` };
+    }
+  }
+
   async function buildReport() {
     const s = root.DFU.yearsView?.state ?? {};
     const settings = await store.getSettings().catch(e => ({ error: String(e) }));
@@ -58,6 +75,7 @@
       },
       historyFetchWithHeader: await testFetch(s.user || settings.username || lastUser, true),
       historyFetchNoHeader: await testFetch(s.user || settings.username || lastUser, false),
+      historyViaTab: await testViaTab(s.user || settings.username || lastUser),
     };
   }
 

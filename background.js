@@ -21,11 +21,40 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     fetchViaTab(msg.url).then(sendResponse, err => sendResponse({ ok: false, reason: 'error', error: String(err) }));
     return true;
   }
+  if (msg?.type === 'dfu:history-open') {
+    openHistoryTab(msg.url).then(sendResponse, err => sendResponse({ ok: false, error: String(err) }));
+    return true;
+  }
+  if (msg?.type === 'dfu:history-page') {
+    api.tabs.sendMessage(msg.tabId, { type: 'dfu:fetch-history', url: msg.url })
+      .then(sendResponse, err => sendResponse({ ok: false, error: String(err) }));
+    return true;
+  }
+  if (msg?.type === 'dfu:history-close') {
+    api.tabs.remove(msg.tabId).catch(() => {});
+    return false;
+  }
   if (msg?.type === 'dfu:page-data' && sender.tab) {
     handlePageData(msg.data, sender.tab.id);
   }
   return false;
 });
+
+// Åpner ølsiden i en bakgrunnsfane og venter til innholdsskriptet svarer.
+// Derfra hentes historikksidene med samme opphav som siden selv.
+async function openHistoryTab(url) {
+  const tab = await api.tabs.create({ url, active: false });
+  const deadline = Date.now() + TAB_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 400));
+    try {
+      const pong = await api.tabs.sendMessage(tab.id, { type: 'dfu:ping' });
+      if (pong?.ok) return { ok: true, tabId: tab.id };
+    } catch { /* siden laster fortsatt */ }
+  }
+  api.tabs.remove(tab.id).catch(() => {});
+  return { ok: false, reason: 'timeout' };
+}
 
 async function fetchViaTab(url) {
   const tab = await api.tabs.create({ url, active: false });
