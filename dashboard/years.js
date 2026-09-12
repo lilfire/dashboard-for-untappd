@@ -1,7 +1,7 @@
 // Fanen «År»: årsoppsummering regnet ut fra hele ølhistorikken, og året side om side med en venn.
 (function (root) {
   const { i18n, store, history, years: yearsLib } = root.DFU;
-  const { html, render } = root.DFU.html;
+  const { html, raw, render } = root.DFU.html;
   const { t } = i18n;
   const $ = id => document.getElementById(id);
   const num = n => i18n.number(n);
@@ -147,34 +147,82 @@
   }
 
   /* ---------- Året side om side med en venn ---------- */
+  const cell = v => (v == null ? '–' : typeof v === 'number' ? (Number.isInteger(v) ? num(v) : rate(v)) : v);
+  const beerList = (title, beers, value) => html`<section class="cmp-col">
+    <h3>${title} <span>${num(beers.length)}</span></h3>
+    <ol>${beers.slice(0, 200).map(b => html`<li><span>${b.name}</span><span>${value(b)}</span></li>`)}
+      ${beers.length > 200 ? html`<li><span>… +${num(beers.length - 200)}</span><span></span></li>` : ''}</ol></section>`;
+
+  // Årene begge har øl fra, nyeste først.
+  function comparableYears() {
+    const all = new Set([...(S.built?.years ?? []).map(y => y.year), ...(S.friend.built?.years ?? []).map(y => y.year)]);
+    return [...all].sort((a, b) => b - a);
+  }
+
   function renderFriendCompare() {
     const box = $('cmp-years');
     if (!box) return;
     const name = S.friend.name;
     box.hidden = !name;
     if (!name) return;
+
     $('cmp-year-btn').textContent = t('cmpYears_btn', name);
-    $('cmp-year-btn').hidden = S.syncing;
-    const mine = S.built?.years.find(y => y.year === S.year);
-    const theirs = S.friend.built?.years.find(y => y.year === S.year);
-    if (!theirs) {
+    $('cmp-year-btn').hidden = S.syncing || !!S.friend.built;
+    if (!S.friend.built) {
       $('cmp-year-meta').textContent = t('cmpYears_hint', name);
-      render($('cmp-year-table'), '');
+      $('cmp-year-bar').hidden = true;
+      $('cmp-all-title').hidden = true;
+      for (const id of ['cmp-year-table', 'cmp-year-cols', 'cmp-all-years']) render($(id), '');
       return;
     }
-    $('cmp-year-meta').textContent = `${S.year}`;
-    const shared = yearsLib.compareYear(S.built.byYear.get(S.year) ?? [], S.friend.built.byYear.get(S.year) ?? []).both.length;
+
+    const years = comparableYears();
+    if (!years.includes(S.cmpYear)) S.cmpYear = years[0] ?? null;
+    $('cmp-year-meta').textContent = '';
+    $('cmp-year-bar').hidden = false;
+    $('cmp-all-title').hidden = false;
+    render($('cmp-year-select'), years.map(y => html`<option value="${y}"${y === S.cmpYear ? raw(' selected') : ''}>${y}</option>`));
+    $('cmp-year-select').onchange = e => { S.cmpYear = Number(e.target.value); renderFriendCompare(); };
+
+    const mine = S.built?.years.find(y => y.year === S.cmpYear);
+    const theirs = S.friend.built.years.find(y => y.year === S.cmpYear);
+    const split = yearsLib.compareYear(S.built?.byYear.get(S.cmpYear) ?? [], S.friend.built.byYear.get(S.cmpYear) ?? []);
+    $('cmp-year-summary').textContent = t('compare_summary', num(split.both.length), num(split.onlyMine.length), num(split.onlyTheirs.length), name);
+
+    const months = new Intl.DateTimeFormat(i18n.locale(), { month: 'long' });
+    const monthName = y => (y && y.beers ? months.format(new Date(2025, y.busiestMonth, 1)) : null);
     const rows = [
-      [t('cmpYears_row_beers'), mine?.beers ?? 0, theirs.beers],
-      [t('cmpYears_row_breweries'), mine?.breweries ?? 0, theirs.breweries],
-      [t('cmpYears_row_styles'), mine?.styles ?? 0, theirs.styles],
-      [t('cmpYears_row_avgRating'), mine?.avgRating ?? null, theirs.avgRating],
+      [t('cmpYears_row_beers'), mine?.beers ?? 0, theirs?.beers ?? 0, 'high'],
+      [t('cmpYears_row_breweries'), mine?.breweries ?? 0, theirs?.breweries ?? 0, 'high'],
+      [t('cmpYears_row_styles'), mine?.styles ?? 0, theirs?.styles ?? 0, 'high'],
+      [t('cmpYears_row_rated'), mine?.ratedCount ?? 0, theirs?.ratedCount ?? 0, 'high'],
+      [t('cmpYears_row_avgRating'), mine?.avgRating ?? null, theirs?.avgRating ?? null, 'high'],
+      [t('cmpYears_row_avgAbv'), mine?.avgAbv ?? null, theirs?.avgAbv ?? null, 'high'],
+      [t('cmpYears_row_strongest'), mine?.strongest?.name ?? null, theirs?.strongest?.name ?? null],
+      [t('cmpYears_row_topStyle'), mine?.topStyles[0]?.name ?? null, theirs?.topStyles[0]?.name ?? null],
+      [t('cmpYears_row_topBrewery'), mine?.topBreweries[0]?.name ?? null, theirs?.topBreweries[0]?.name ?? null],
+      [t('cmpYears_row_busiestMonth'), monthName(mine), monthName(theirs)],
     ];
-    render($('cmp-year-table'), html`<thead><tr><th>${S.year}</th><th>${t('compare_you')}</th><th>${name}</th></tr></thead>
-      <tbody>${rows.map(([label, a, b]) => html`<tr><td>${label}</td>
-        <td class="${a != null && b != null && a > b ? 'win' : ''}">${a == null ? '–' : typeof a === 'number' && !Number.isInteger(a) ? rate(a) : num(a)}</td>
-        <td class="${a != null && b != null && b > a ? 'win' : ''}">${b == null ? '–' : typeof b === 'number' && !Number.isInteger(b) ? rate(b) : num(b)}</td></tr>`)}
-        <tr><td>${t('cmpYears_row_shared')}</td><td colspan="2">${num(shared)}</td></tr></tbody>`);
+    const win = (a, b, mode) => (mode === 'high' && typeof a === 'number' && typeof b === 'number' && a > b ? 'win' : '');
+    render($('cmp-year-table'), html`<thead><tr><th>${S.cmpYear}</th><th>${t('compare_you')}</th><th>${name}</th></tr></thead>
+      <tbody>${rows.map(([label, a, b, mode]) => html`<tr><td>${label}</td>
+        <td class="${win(a, b, mode)}">${cell(a)}</td><td class="${win(b, a, mode)}">${cell(b)}</td></tr>`)}
+        <tr><td>${t('cmpYears_row_shared')}</td><td colspan="2">${num(split.both.length)}</td></tr></tbody>`);
+
+    render($('cmp-year-cols'), [
+      beerList(t('compare_both'), split.both, b => rate(b.ratingYou)),
+      beerList(t('compare_onlyMe'), split.onlyMine, b => rate(b.ratingYou)),
+      beerList(t('compare_onlyThem', name), split.onlyTheirs, b => rate(b.ratingYou)),
+    ]);
+
+    render($('cmp-all-years'), html`<thead><tr><th>${t('cmpYears_year')}</th><th>${t('compare_you')}</th><th>${name}</th><th>${t('cmpYears_row_shared')}</th></tr></thead>
+      <tbody>${years.map(y => {
+        const a = S.built?.years.find(x => x.year === y);
+        const b = S.friend.built.years.find(x => x.year === y);
+        const both = yearsLib.compareYear(S.built?.byYear.get(y) ?? [], S.friend.built.byYear.get(y) ?? []).both.length;
+        return html`<tr><td>${y}</td><td class="${win(a?.beers ?? 0, b?.beers ?? 0, 'high')}">${num(a?.beers ?? 0)}</td>
+          <td class="${win(b?.beers ?? 0, a?.beers ?? 0, 'high')}">${num(b?.beers ?? 0)}</td><td>${num(both)}</td></tr>`;
+      })}</tbody>`);
   }
 
   async function syncFriend() {
