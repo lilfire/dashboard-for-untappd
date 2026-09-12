@@ -45,6 +45,25 @@
     }
   }
 
+  // Kjører selve hentingen i to sider og viser hva sløyfen faktisk gjør.
+  async function testSync(user) {
+    const steps = [];
+    try {
+      const res = await root.DFU.history.sync(user, {
+        known: [], full: true, maxPages: 2,
+        onProgress: p => steps.push({ pages: p.pages, fetched: p.fetched, oldest: p.oldest ?? null, done: !!p.done }),
+      });
+      return {
+        pages: res.pages, fetched: res.fetched, via: res.via ?? null, stopped: res.stopped, complete: res.complete,
+        beers: res.beers.length,
+        first: res.beers[0] ? { id: res.beers[0].id, name: res.beers[0].name, first: res.beers[0].first } : null,
+        steps,
+      };
+    } catch (err) {
+      return { error: `${err.name}: ${err.message}`, steps };
+    }
+  }
+
   async function buildReport() {
     const s = root.DFU.yearsView?.state ?? {};
     const settings = await store.getSettings().catch(e => ({ error: String(e) }));
@@ -76,6 +95,7 @@
       historyFetchWithHeader: await testFetch(s.user || settings.username || lastUser, true),
       historyFetchNoHeader: await testFetch(s.user || settings.username || lastUser, false),
       historyViaTab: await testViaTab(s.user || settings.username || lastUser),
+      historySyncProbe: await testSync(s.user || settings.username || lastUser),
     };
   }
 

@@ -128,6 +128,13 @@
         known: S.history?.beers ?? [], full, expected: S.expected,
         signal: S.controller.signal, onProgress: progress,
       });
+      if (!res.beers.length) {
+        // Tomt resultat skal ikke lagres som en fullført historikk.
+        S.syncing = false;
+        renderSync();
+        $('y-sync-text').textContent = t('years_error', `tomt svar (${res.via ?? '?'}, ${res.pages} sider, ${res.stopped})`);
+        return;
+      }
       S.history = await store.saveHistory(S.user, { beers: res.beers, complete: res.complete && res.stopped !== 'aborted' });
       S.syncing = false;
       build();
