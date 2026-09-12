@@ -151,10 +151,13 @@
     for (const b of document.querySelectorAll('#trend-metric button')) b.setAttribute('aria-pressed', String(b.dataset.metric === trendMetric));
 
     // Har vi hele ølhistorikken, viser vi den måned for måned. Ellers bare dagene siden utvidelsen ble installert.
+    // Land krever i tillegg at ølene er koblet til land, siden historikken ikke har landinfo.
     const beers = DFU.yearsView?.state?.history?.beers ?? [];
-    const fromHistory = beers.length > 0 && ['unique', 'breweries', 'styles'].includes(trendMetric);
+    const byCountry = DFU.countries?.byBeer() ?? {};
+    const metrics = ['unique', 'breweries', 'styles', ...(Object.keys(byCountry).length ? ['countries'] : [])];
+    const fromHistory = beers.length > 0 && metrics.includes(trendMetric);
     const points = fromHistory
-      ? DFU.years.timeline(beers).map(p => ({ date: p.date, value: trendMetric === 'unique' ? p.unique : p[trendMetric] }))
+      ? DFU.years.timeline(beers, byCountry).map(p => ({ date: p.date, value: trendMetric === 'unique' ? p.unique : p[trendMetric] }))
       : Object.entries(state?.daily ?? {}).sort(([a], [b]) => a.localeCompare(b))
         .map(([date, v]) => ({ date, value: v[trendMetric] })).filter(p => p.value != null);
 
@@ -168,6 +171,9 @@
 
   // Årsfanen kaller denne når historikken er hentet.
   DFU.dashboardTrend = renderTrend;
+
+  // Landkurven blir tilgjengelig først når ølene er koblet til land.
+  document.addEventListener('dfu:countries', () => renderTrend());
 
   function render() {
     const snap = latest();

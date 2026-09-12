@@ -94,6 +94,14 @@ test('timeline gir kumulativ utvikling måned for måned', () => {
   assert.deepEqual(line.map(p => p.styles), [1, 1, 2]);
 });
 
+test('timeline teller land når ølene er koblet til land', () => {
+  const list = [beer(1, '2024-11-05'), beer(2, '2025-01-10'), beer(3, '2025-01-20')];
+  const byBeer = { 1: 'Norway', 2: 'Belgium', 3: 'Norway' };
+  const line = years.timeline(list, byBeer);
+  assert.deepEqual(line.map(p => p.countries), [1, 1, 2], 'desember uten nye øl beholder forrige verdi');
+  assert.deepEqual(years.timeline(list).map(p => p.countries), [0, 0, 0], 'uten kobling telles ingen land');
+});
+
 test('timeline over årsskifte og uten data', () => {
   const line = years.timeline([beer(1, '2023-12-31'), beer(2, '2024-02-01')]);
   assert.deepEqual(line.map(p => p.date), ['2023-12-01', '2024-01-01', '2024-02-01']);
