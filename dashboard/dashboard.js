@@ -181,6 +181,7 @@
     renderChange(change);
     views.setData(snap.data, change, user);
     compare.setMe(snap.data);
+    DFU.yearsView.setUser(snap.data.pageOwner || user, snap.data.stats?.unique ?? null);
     renderTrend();
     updateStatus();
   }

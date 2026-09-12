@@ -102,7 +102,9 @@
     $('y-sync-stop').hidden = !S.syncing;
     $('y-progress').hidden = !S.syncing;
     if (S.syncing) return;
-    if (!h?.syncedAt) {
+    if (!S.user) {
+      $('y-sync-text').textContent = t('err_noUser');
+    } else if (!h?.syncedAt) {
       $('y-sync-text').textContent = t('years_syncNever', num(pages ?? 0));
     } else if (!h.complete) {
       $('y-sync-text').textContent = t('years_incomplete', num(h.count), num(S.expected ?? h.count));
@@ -210,9 +212,11 @@
 
   // Kalles av dashbordet når brukeren og antall unike øl er kjent.
   async function setUser(user, expected) {
+    if (!user || S.syncing) return;
+    const same = S.user && S.user.toLowerCase() === user.toLowerCase();
     S.user = user;
-    S.expected = expected ?? null;
-    S.history = await store.loadHistory(user);
+    S.expected = expected ?? S.expected;
+    if (!same || !S.history) S.history = await store.loadHistory(user);
     build();
   }
 
