@@ -152,6 +152,21 @@ mark { background: var(--amber-soft); color: inherit; border-radius: 2px; }
 .family[open] summary { border-bottom: 1px solid var(--line); }
 .family table.list td { padding: 6px 12px; }
 
+/* Understiler: samme mønster ett nivå ned */
+.styles { display: grid; }
+.style { border-top: 1px solid var(--line); }
+.style:first-child { border-top: 0; }
+.style > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) 36%; gap: 12px;
+  align-items: center; padding: 8px 12px 8px 26px; position: relative; }
+.style.flat > summary { cursor: default; }
+.style > summary::-webkit-details-marker { display: none; }
+.style > summary::before { content: "▸"; position: absolute; left: 10px; color: var(--muted); font-size: 11px; }
+.style.flat > summary::before { content: ""; }
+.style[open] > summary::before { content: "▾"; }
+.style[open] > summary { border-bottom: 1px solid var(--line); }
+.style table.list td { padding: 5px 12px 5px 26px; }
+.style > .meta { padding: 8px 26px 10px; }
+
 /* Utvikling */
 .segmented { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; justify-self: start; flex-wrap: wrap; }
 .segmented button { appearance: none; border: 0; background: var(--surface); padding: 7px 12px; cursor: pointer; font-size: 14px; }

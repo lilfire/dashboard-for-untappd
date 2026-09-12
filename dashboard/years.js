@@ -121,6 +121,7 @@
     renderSync();
     renderYearPicker();
     root.DFU.dashboardTrend?.();
+    document.dispatchEvent(new CustomEvent('dfu:history'));
     if (!S.built.years.length && S.history?.beers?.length) $('y-summary').textContent = t('years_none');
   }
 

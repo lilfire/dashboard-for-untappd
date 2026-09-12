@@ -149,21 +149,64 @@
     return families;
   }
 
+  const openStyles = new Set();
+  const MAX_BEERS_PER_STYLE = 300;
+
+  // Ølene per stil kommer fra hele ølhistorikken, som hentes under fanen «År».
+  function beersByStyle() {
+    const beers = root.DFU.yearsView?.state?.history?.beers ?? [];
+    const map = new Map();
+    for (const b of beers) {
+      if (!b.style) continue;
+      if (!map.has(b.style)) map.set(b.style, []);
+      map.get(b.style).push(b);
+    }
+    for (const list of map.values()) list.sort((a, b) => String(b.first ?? '').localeCompare(String(a.first ?? '')));
+    return map;
+  }
+
+  function styleBeers(list) {
+    const fmt = v => (v == null ? '–' : v.toLocaleString(i18n.locale(), { maximumFractionDigits: 2 }));
+    const rows = list.slice(0, MAX_BEERS_PER_STYLE).map(b => html`<tr>
+      <td class="num">${b.first ? i18n.date(`${b.first}T12:00:00`) : '–'}</td>
+      <td><a href="${UNTAPPD}${b.url ?? ''}" target="_blank" rel="noopener">${b.name}</a>
+        <span class="sub-line">${b.brewery}</span></td>
+      <td class="num">${fmt(b.ratingYou)}</td></tr>`);
+    const more = list.length > MAX_BEERS_PER_STYLE
+      ? html`<tr><td colspan="3" class="meta">… +${num(list.length - MAX_BEERS_PER_STYLE)}</td></tr>` : '';
+    return html`<table class="list"><tbody>${rows}${more}</tbody></table>`;
+  }
+
   function renderStyles() {
     const q = fold(S.q.trim());
+    const byStyle = beersByStyle();
+    const hasHistory = byStyle.size > 0;
     const shown = S.families
       .map(f => ({ ...f, hits: q ? f.styles.filter(s => s.folded.includes(q) || f.folded.includes(q)) : f.styles }))
       .filter(f => f.hits.length);
+
+    const styleBlock = (s, f) => {
+      const list = byStyle.get(s.name) ?? [];
+      const head = html`<summary><span class="name">${highlight(s.name, q)}${newTag(S.isNew.has(s.id))}</span>
+        ${bar(s.count, f.styles[0].count)}</summary>`;
+      if (!hasHistory) return html`<div class="style flat">${head}</div>`;
+      return html`<details class="style" data-style="${s.name}"${q || openStyles.has(s.name) ? raw(' open') : ''}>
+        ${head}${list.length ? styleBeers(list) : html`<p class="meta">${t('styles_noBeers')}</p>`}</details>`;
+    };
+
     render($('s-rows'), shown.length ? shown.map(f => html`<details class="family" data-family="${f.name}"${q || S.open.has(f.name) ? raw(' open') : ''}>
         <summary><span class="name">${highlight(f.name, q)}<small>${t('styles_in', f.styles.length)}</small>${newTag(f.styles.some(s => S.isNew.has(s.id)))}</span>
           ${bar(f.count, S.max)}</summary>
-        <table class="list"><tbody>${f.hits.map(s => html`<tr>
-          <td>${highlight(s.name, q)}${newTag(S.isNew.has(s.id))}</td>
-          <td class="bar-col">${bar(s.count, f.styles[0].count)}</td></tr>`)}</tbody></table>
+        <div class="styles">${f.hits.map(s => styleBlock(s, f))}</div>
       </details>`) : html`<p class="meta">${t('emptySearch')}</p>`);
+
     const styleCount = S.families.reduce((n, f) => n + f.styles.length, 0);
-    $('s-meta').textContent = `${num(styleCount)} ${t('kpi_styles').toLowerCase()} · ${t('families_count', num(S.families.length))}`;
+    $('s-meta').textContent = `${num(styleCount)} ${t('kpi_styles').toLowerCase()} · ${t('families_count', num(S.families.length))}`
+      + (hasHistory ? '' : ` · ${t('styles_needHistory')}`);
   }
+
+  // Årsfanen sier fra når historikken er hentet, så ølene kan vises under hver stil.
+  document.addEventListener('dfu:history', () => { if (S.families.length) renderStyles(); });
 
   /* ---------- Siste øl ---------- */
   function renderRecent(recent, username) {
@@ -194,9 +237,12 @@
     $('c-q').addEventListener('input', e => { C.q = e.target.value; renderCountries(); });
     $('s-q').addEventListener('input', e => { S.q = e.target.value; renderStyles(); });
     $('s-rows').addEventListener('toggle', e => {
-      const name = e.target.dataset?.family;
-      if (!name || S.q) return;
-      if (e.target.open) S.open.add(name); else S.open.delete(name);
+      if (S.q) return;
+      const { family, style } = e.target.dataset ?? {};
+      const set = family ? S.open : style ? openStyles : null;
+      const name = family ?? style;
+      if (!set || !name) return;
+      if (e.target.open) set.add(name); else set.delete(name);
     }, true);
   }
 
