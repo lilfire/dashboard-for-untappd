@@ -7,7 +7,6 @@ Nettleserutvidelse for Firefox og Chrome som viser ditt eget Untappd-dashbord, h
 ## Hva du får
 
 - **Nøkkeltall:** innsjekkinger, unike øl, bryggerier, land, stiler, merker og venner
-- **Siste endring:** nye bryggerier, land og stiler, og bryggerier du har fått flere øl fra
 - **Bryggerier:** søk, filter på antall øl og sortering, med lenke til bryggerisiden på Untappd
 - **Land og stiler:** rangert, med stiler gruppert i familier
 - **Siste øl:** de 25 nyeste, med din rangering mot den globale

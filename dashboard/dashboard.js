@@ -92,7 +92,9 @@
       const name = data.pageOwner || who.name;
       if (!user || user.toLowerCase() !== name.toLowerCase()) user = name;
       state = await store.save(user, { at: Date.now(), via, data });
-      render();
+      await render();
+      await DFU.yearsView.refresh();
+      await DFU.countries.refresh(user, data.countries);
     } catch (err) {
       showAlert(t('err_network', err.message));
     } finally {
@@ -117,34 +119,6 @@
     renderHTML($('kpis'), tiles.map(([key, value, delta]) => html`<div class="kpi">
       <span class="v">${num(value)}</span><span class="l">${t(key)}</span>
       ${delta > 0 ? html`<span class="d">+${num(delta)}</span>` : ''}</div>`));
-  }
-
-  function renderChange(change) {
-    const chips = (items, label) => [
-      items.slice(0, 12).map(label),
-      items.length > 12 ? html`<span class="chip">+${num(items.length - 12)}</span>` : '',
-    ];
-    const group = (title, items, label) => (items.length
-      ? html`<div class="change-group"><span>${title}</span>${chips(items, label)}</div>` : '');
-    const name = x => html`<span class="chip">${x.name}</span>`;
-    const has = change && (change.unique > 0 || change.total > 0 || change.breweries.added.length ||
-      change.breweries.increased.length || change.countries.added.length || change.styles.added.length);
-    if (!has) {
-      renderHTML($('change'), html`<div class="change-head"><strong>${t('change_title')}</strong></div><p>${t('change_none')}</p>`);
-      return;
-    }
-    renderHTML($('change'), html`<div class="change-head"><strong>${t('change_title')}</strong>
-      <span class="meta">${t('change_since', i18n.date(change.since))}</span></div>
-      <div class="change-groups">
-        <div class="change-group">
-          ${change.unique > 0 ? html`<span class="chip"><b>${t('change_unique', num(change.unique))}</b></span>` : ''}
-          ${change.total > 0 ? html`<span class="chip"><b>+${num(change.total)}</b> ${t('kpi_total').toLowerCase()}</span>` : ''}
-        </div>
-        ${group(t('change_newBreweries'), change.breweries.added, name)}
-        ${group(t('change_moreBeers'), change.breweries.increased, x => html`<span class="chip">${x.name} <b>+${x.delta}</b></span>`)}
-        ${group(t('change_newCountries'), change.countries.added, name)}
-        ${group(t('change_newStyles'), change.styles.added, name)}
-      </div>`);
   }
 
   function renderTrend() {
@@ -175,7 +149,7 @@
   // Landkurven blir tilgjengelig først når ølene er koblet til land.
   document.addEventListener('dfu:countries', () => renderTrend());
 
-  function render() {
+  async function render() {
     const snap = latest();
     if (!snap) return;
     const change = store.latestChange(state);
@@ -184,10 +158,9 @@
     $('user-name').textContent = snap.data.pageOwner || user;
     document.title = `${snap.data.pageOwner || user} · Dashboard for Untappd`;
     renderKpis(snap.data, change);
-    renderChange(change);
     views.setData(snap.data, change, user);
     compare.setMe(snap.data);
-    DFU.yearsView.setUser(snap.data.pageOwner || user, snap.data.stats?.unique ?? null);
+    await DFU.yearsView.setUser(snap.data.pageOwner || user, snap.data.stats?.unique ?? null);
     renderTrend();
     updateStatus();
   }

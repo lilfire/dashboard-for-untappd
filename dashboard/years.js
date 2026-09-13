@@ -34,13 +34,13 @@
 
   function bars(values, labels, peak, cls, clickable = false) {
     const max = Math.max(1, ...values);
-    const height = v => `height:${Math.round(v / max * 100)}%`;
+    const height = v => `height:${Math.round(v / max * 78)}%`;
     const bar = (v, i) => (clickable
-      ? html`<button type="button" class="b${i === peak && v > 0 ? ' peak' : ''}${i === S.month ? ' sel' : ''}" data-month="${i}">
+      ? html`<button type="button" class="b${i === peak && v > 0 ? ' peak' : ''}${i === S.month ? ' sel' : ''}" data-month="${i}" aria-label="${labels[i]}: ${num(v)}" aria-pressed="${i === S.month}">
           <em>${v || ''}</em><i style="${height(v)}"></i></button>`
       : html`<div class="b${i === peak && v > 0 ? ' peak' : ''}"><em>${v || ''}</em><i style="${height(v)}"></i></div>`);
-    return html`<div class="bars ${cls}">${values.map(bar)}</div>
-      <div class="bar-labels ${cls}">${labels.map(l => html`<span>${l}</span>`)}</div>`;
+    return html`<div class="year-chart-scroll"><div class="year-chart ${cls}"><div class="bars ${cls}">${values.map(bar)}</div>
+      <div class="bar-labels ${cls}">${labels.map(l => html`<span>${l}</span>`)}</div></div></div>`;
   }
 
   // Dagvisning for én måned, åpnet ved å klikke på en månedssøyle.
@@ -68,9 +68,9 @@
     if (S.month != null) document.getElementById('y-month')?.scrollIntoView({ block: 'nearest' });
   });
 
-  const listCard = (label, items, value, extra = '') => html`<div class="card ${extra}">
+  const listCard = (label, items, value, extra = '', name = x => x.name) => html`<div class="card year-ranking ${extra}">
     <span class="label">${label}</span>
-    <ol>${items.map(x => html`<li><span>${x.name}</span><b>${value(x)}</b></li>`)}</ol></div>`;
+    <ol>${items.map(x => html`<li><span>${name(x)}</span><b>${value(x)}</b></li>`)}</ol></div>`;
 
   /* ---------- Årskort ---------- */
   function renderYear() {
@@ -86,12 +86,12 @@
       html`<div class="card"><span class="label">${t('card_avgRating')}</span><span class="value">${rate(y.avgRating)}</span>
         <span class="note">${t('card_ratedOf', num(y.ratedCount), num(y.beers))}${y.generosity == null ? '' : ` · ${t('card_vsGlobal', signed(y.generosity))}`}</span></div>`,
       html`<div class="card"><span class="label">${t('card_avgAbv')}</span><span class="value">${y.avgAbv == null ? '–' : `${y.avgAbv.toLocaleString(i18n.locale())} %`}</span>
-        <span class="note">${y.strongest ? t('card_strongest', y.strongest.name, y.strongest.abv.toLocaleString(i18n.locale())) : ''}</span></div>`,
+        <span class="note">${y.strongest ? t('card_strongest', '{0}', y.strongest.abv.toLocaleString(i18n.locale())).split('{0}').map((part, i) => html`${i ? beerLink(y.strongest) : ''}${part}`) : ''}</span></div>`,
       html`<div class="card"><span class="label">${t('card_topRated')}</span>
         <span class="value small">${beerLink(y.topRated[0])}</span>
         <span class="note">${y.topRated[0] ? `${y.topRated[0].brewery} · ${rate(y.topRated[0].ratingYou)}` : '–'}</span></div>`,
-      listCard(t('card_top5'), y.topRated, b => rate(b.ratingYou)),
-      listCard(t('card_lowest'), y.lowestRated, b => rate(b.ratingYou)),
+      listCard(t('card_top5'), y.topRated, b => rate(b.ratingYou), '', beerLink),
+      listCard(t('card_lowest'), y.lowestRated, b => rate(b.ratingYou), '', beerLink),
       listCard(t('card_topStyles'), y.topStyles, x => num(x.count)),
       listCard(t('card_topBreweries'), y.topBreweries, x => num(x.count)),
       html`<div class="card"><span class="label">${t('card_firstLast')}</span>
@@ -102,7 +102,15 @@
       S.month != null ? monthCard(y.year) : '',
       html`<div class="card wide"><span class="label">${t('card_weekdays')}</span>${bars(y.weekdays, weekdayLabels(), y.busiestWeekday, 'weekdays')}</div>`,
     ];
-    render($('y-cards'), cards);
+    const [beers, breweries, styles, rating, abv, favorite, top, lowest, topStyles, topBreweries, firstLast, months, month, weekdays] = cards;
+    const section = (key, content, cls) => html`<section class="year-section" aria-labelledby="${key}">
+      <h2 id="${key}">${t(key)}</h2><div class="${cls}">${content}</div></section>`;
+    render($('y-cards'), [
+      section('year_overview', [beers, breweries, styles], 'year-metrics'),
+      section('year_activity', [months, month, weekdays], 'year-activity'),
+      section('year_favorites', [top, lowest, topStyles, topBreweries], 'year-rankings'),
+      section('year_details', [favorite, firstLast, rating, abv], 'year-details'),
+    ]);
     $('y-summary').textContent = t('year_summary', num(y.beers), num(y.breweries), num(y.styles));
   }
 
@@ -129,8 +137,6 @@
   function renderSync() {
     const h = S.history;
     const pages = S.expected ? Math.ceil(S.expected / history.PAGE_SIZE) : null;
-    $('y-sync-btn').textContent = h?.syncedAt ? t('years_syncUpdate') : t('years_syncBtn');
-    $('y-sync-btn').disabled = S.syncing || !S.user;
     $('y-sync-stop').hidden = !S.syncing;
     $('y-progress').hidden = !S.syncing;
     if (S.syncing) return;
@@ -141,7 +147,7 @@
     } else if (!h.complete) {
       $('y-sync-text').textContent = t('years_incomplete', num(h.count), num(S.expected ?? h.count));
     } else {
-      $('y-sync-text').textContent = t('years_synced', num(h.count), i18n.relative(h.syncedAt));
+      $('y-sync-text').textContent = '';
     }
   }
 
@@ -182,7 +188,7 @@
   const cell = v => (v == null ? '–' : typeof v === 'number' ? (Number.isInteger(v) ? num(v) : rate(v)) : v);
   const beerList = (title, beers, value) => html`<section class="cmp-col">
     <h3>${title} <span>${num(beers.length)}</span></h3>
-    <ol>${beers.slice(0, 200).map(b => html`<li><span>${b.name}</span><span>${value(b)}</span></li>`)}
+    <ol>${beers.slice(0, 200).map(b => html`<li><span>${beerLink(b)}</span><span>${value(b)}</span></li>`)}
       ${beers.length > 200 ? html`<li><span>… +${num(beers.length - 200)}</span><span></span></li>` : ''}</ol></section>`;
 
   // Årene begge har øl fra, nyeste først.
@@ -205,6 +211,7 @@
       $('cmp-year-meta').textContent = t('cmpYears_hint', name);
       $('cmp-year-bar').hidden = true;
       $('cmp-all-title').hidden = true;
+      if ($('cmp-year-chart')) render($('cmp-year-chart'), '');
       for (const id of ['cmp-year-table', 'cmp-year-cols', 'cmp-all-years']) render($(id), '');
       return;
     }
@@ -222,6 +229,16 @@
     const split = yearsLib.compareYear(S.built?.byYear.get(S.cmpYear) ?? [], S.friend.built.byYear.get(S.cmpYear) ?? []);
     $('cmp-year-summary').textContent = t('compare_summary', num(split.both.length), num(split.onlyMine.length), num(split.onlyTheirs.length), name);
 
+    const monthly = Array.from({ length: 12 }, (_, i) => [mine?.months[i] ?? 0, theirs?.months[i] ?? 0]);
+    const maxMonthly = Math.max(1, ...monthly.flat());
+    if ($('cmp-year-chart')) render($('cmp-year-chart'), html`<section class="cmp-chart-card">
+      <h3>${t('compare_monthly')}</h3><p class="meta">${t('years_note')}</p>
+      <div class="cmp-legend"><span><i class="mine"></i>${t('compare_you')}</span><span><i class="theirs"></i>${name}</span></div>
+      <div class="cmp-months">${monthly.map(([a, b], i) => html`<div class="cmp-month">
+        <span class="cmp-month-label">${monthLabels()[i]}</span>
+        <div class="cmp-pair"><div><span class="cmp-meter" aria-hidden="true"><i class="mine" style="width:${a / maxMonthly * 100}%"></i></span><b aria-label="${t('compare_you')}: ${num(a)}">${num(a)}</b></div>
+        <div><span class="cmp-meter" aria-hidden="true"><i class="theirs" style="width:${b / maxMonthly * 100}%"></i></span><b aria-label="${name}: ${num(b)}">${num(b)}</b></div></div>
+      </div>`)}</div></section>`);
     const months = new Intl.DateTimeFormat(i18n.locale(), { month: 'long' });
     const monthName = y => (y && y.beers ? months.format(new Date(2025, y.busiestMonth, 1)) : null);
     const rows = [
@@ -231,7 +248,7 @@
       [t('cmpYears_row_rated'), mine?.ratedCount ?? 0, theirs?.ratedCount ?? 0, 'high'],
       [t('cmpYears_row_avgRating'), mine?.avgRating ?? null, theirs?.avgRating ?? null, 'high'],
       [t('cmpYears_row_avgAbv'), mine?.avgAbv ?? null, theirs?.avgAbv ?? null, 'high'],
-      [t('cmpYears_row_strongest'), mine?.strongest?.name ?? null, theirs?.strongest?.name ?? null],
+      [t('cmpYears_row_strongest'), beerLink(mine?.strongest), beerLink(theirs?.strongest)],
       [t('cmpYears_row_topStyle'), mine?.topStyles[0]?.name ?? null, theirs?.topStyles[0]?.name ?? null],
       [t('cmpYears_row_topBrewery'), mine?.topBreweries[0]?.name ?? null, theirs?.topBreweries[0]?.name ?? null],
       [t('cmpYears_row_busiestMonth'), monthName(mine), monthName(theirs)],
@@ -282,7 +299,6 @@
 
   /* ---------- API ---------- */
   function init() {
-    $('y-sync-btn').addEventListener('click', () => runSync(!S.history?.complete));
     $('y-sync-stop').addEventListener('click', () => S.controller?.abort());
     $('y-year').addEventListener('change', e => { S.year = Number(e.target.value); renderYear(); renderFriendCompare(); });
     $('cmp-year-btn')?.addEventListener('click', syncFriend);
@@ -321,5 +337,5 @@
   }
 
   root.DFU = root.DFU || {};
-  root.DFU.yearsView = { init, setUser, setFriend, state: S };
+  root.DFU.yearsView = { init, setUser, setFriend, refresh: () => runSync(!S.history?.complete), state: S };
 })(globalThis);

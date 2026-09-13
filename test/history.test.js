@@ -1,6 +1,48 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const history = require('../lib/history.js');
+const vm = require('node:vm');
+const fs = require('node:fs');
+
+function countryHistory(pages) {
+  const DFU = { parse: { parseBeersPage: doc => ({ recent: doc }) } };
+  vm.runInNewContext(fs.readFileSync(require.resolve('../lib/history.js'), 'utf8'), {
+    DFU, DOMException,
+    DOMParser: class { parseFromString(html) { return JSON.parse(html); } },
+    fetch: async () => {
+      const page = pages.shift();
+      if (page instanceof Error) throw page;
+      return { ok: true, text: async () => JSON.stringify(page) };
+    },
+    setTimeout: fn => { queueMicrotask(fn); return 1; }, clearTimeout() {},
+  });
+  return DFU.history;
+}
+
+test('country checkpoints preserve finished countries when a later request is aborted', async () => {
+  const checkpoints = [];
+  const api = countryHistory([[{ id: '1' }], new DOMException('Stopped', 'AbortError')]);
+  const result = await api.syncCountries('me', {
+    countries: [{ id: 'no', name: 'Norway', count: 1 }, { id: 'se', name: 'Sweden', count: 1 }],
+    onCheckpoint: async data => checkpoints.push(JSON.parse(JSON.stringify(data))),
+  });
+  assert.equal(result.stopped, 'aborted');
+  assert.deepEqual(checkpoints, [{ byBeer: { '1': 'Norway' }, counts: { no: 1 } }]);
+  assert.equal(result.counts.no, 1);
+  assert.equal(result.counts.se, undefined);
+});
+
+test('country pages are checkpointed before the entire country is finished', async () => {
+  const checkpoints = [];
+  const api = countryHistory([Array.from({ length: 25 }, (_, id) => ({ id: String(id + 1) })), new DOMException('Stopped', 'AbortError')]);
+  const result = await api.syncCountries('me', {
+    countries: [{ id: 'no', name: 'Norway', count: 30 }],
+    onCheckpoint: async data => checkpoints.push(data),
+  });
+  assert.equal(result.stopped, 'aborted');
+  assert.equal(Object.keys(checkpoints[0].byBeer).length, 25);
+  assert.equal(Object.keys(checkpoints[0].counts).length, 0);
+});
 
 const beer = (id, first, recent = first, extra = {}) => ({ id: String(id), name: `Beer ${id}`, first, recent, ...extra });
 

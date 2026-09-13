@@ -30,7 +30,6 @@
   <main id="content" hidden>
     <section class="kpis" id="kpis" aria-label="Nøkkeltall"></section>
 
-    <section class="change" id="change"></section>
 
     <nav class="tabs" role="tablist" id="tabs">
       <button type="button" role="tab" data-tab="breweries" data-i18n="tab_breweries"></button>
@@ -72,7 +71,6 @@
         <div class="row">
           <p class="meta" id="c-sync-text"></p>
           <span class="row">
-            <button class="btn" id="c-sync-btn" type="button"></button>
             <button class="btn" id="c-sync-stop" type="button" hidden data-i18n="years_stop"></button>
           </span>
         </div>
@@ -120,17 +118,21 @@
     </section>
 
     <section class="panel" id="panel-compare" role="tabpanel" hidden>
+      <h2 class="cmp-title" data-i18n="compare_heading"></h2>
       <form class="controls" id="cmp-form">
-        <input class="search" id="cmp-user" type="text" autocomplete="off" spellcheck="false" data-i18n-placeholder="compare_placeholder" data-i18n-aria-label="compare_placeholder">
+        <input class="search" id="cmp-user" type="text" list="cmp-friends" autocomplete="off" spellcheck="false" data-i18n-placeholder="compare_placeholder" data-i18n-aria-label="compare_placeholder">
+        <datalist id="cmp-friends"></datalist>
         <button class="btn primary" type="submit" data-i18n="compare_run"></button>
       </form>
       <p class="meta" id="cmp-meta" data-i18n="compare_hint"></p>
+      <p class="meta" id="cmp-friends-meta" aria-live="polite"></p>
       <div id="cmp-out" hidden>
         <div class="segmented" id="cmp-kind" role="group">
           <button type="button" data-kind="breweries" data-i18n="tab_breweries"></button>
           <button type="button" data-kind="countries" data-i18n="tab_countries"></button>
           <button type="button" data-kind="styles" data-i18n="tab_styles"></button>
         </div>
+        <div id="cmp-overlap"></div>
         <p class="cmp-summary" id="cmp-summary"></p>
         <div class="cmp-cols" id="cmp-cols"></div>
       </div>
@@ -142,6 +144,7 @@
           <select id="cmp-year-select" data-i18n-aria-label="cmpYears_year"></select>
           <span class="meta" id="cmp-year-summary"></span>
         </div>
+        <div id="cmp-year-chart"></div>
         <div class="table-wrap"><table class="year-cmp" id="cmp-year-table"></table></div>
         <div class="cmp-cols" id="cmp-year-cols"></div>
         <h2 id="cmp-all-title" data-i18n="cmpYears_allYears" hidden></h2>
@@ -154,9 +157,7 @@
         <div class="row">
           <p class="meta" id="y-sync-text"></p>
           <span class="row">
-            <button class="btn primary" id="y-sync-btn" type="button"></button>
             <button class="btn" id="y-sync-stop" type="button" hidden data-i18n="years_stop"></button>
-            <a class="btn" href="../dev/diagnose.html" title="Diagnose">Diagnose</a>
           </span>
         </div>
         <div class="progress" id="y-progress" hidden><i style="width:0%"></i></div>
@@ -184,7 +185,6 @@
 <script src="compare.js"></script>
 <script src="years.js"></script>
 <script src="countries.js"></script>
-<script src="report.js"></script>
 <script src="dashboard.js"></script>
 </body>
 </html>
