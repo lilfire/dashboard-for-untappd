@@ -1,7 +1,12 @@
 {
   "addons": {
     "{3d7c4f1e-5b2a-4e8f-9a61-0c2d8b7e4f93}": {
-      "updates": []
+      "updates": [
+        {
+          "version": "1.1.0",
+          "update_link": "https://github.com/lilfire/dashboard-for-untappd/releases/download/v1.1.0/dashboard-for-untappd-1.1.0.xpi"
+        }
+      ]
     }
   }
 }
