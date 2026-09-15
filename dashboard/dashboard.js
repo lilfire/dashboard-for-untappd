@@ -3,7 +3,7 @@
   const { t } = i18n;
   const $ = id => document.getElementById(id);
   const ORIGINS = { origins: ['https://untappd.com/*'] };
-  const TABS = [...document.querySelectorAll('#tabs [role="tab"]')].map(b => b.dataset.tab);
+  const TABS = [...document.querySelectorAll('#menu [data-tab]')].map(b => b.dataset.tab);
 
   let settings = await store.getSettings();
   let user = null;
@@ -27,14 +27,17 @@
 
   function updateStatus() {
     const snap = latest();
-    $('status').textContent = refreshing ? t('refreshing')
+    const text = refreshing ? t('refreshing')
       : snap ? `${t('updated', i18n.relative(snap.at))} · ${t(`via_${snap.via}`)}` : t('neverUpdated');
+    $('status').textContent = text;
+    $('menu-status').textContent = text;
   }
 
   function setBusy(busy) {
     refreshing = busy;
     $('refresh').disabled = busy;
-    $('refresh').textContent = busy ? t('refreshing') : t('refresh');
+    $('refresh-label').textContent = busy ? t('refreshing') : t('refresh');
+    $('menu-toggle').classList.toggle('busy', busy);
     updateStatus();
   }
 
@@ -149,11 +152,30 @@
   }
 
   /* ---------- Faner ---------- */
-  function selectTab(name) {
-    if (!TABS.includes(name)) name = 'breweries';
-    for (const b of document.querySelectorAll('#tabs [role="tab"]')) b.setAttribute('aria-selected', String(b.dataset.tab === name));
+  function selectTab(name, { scroll = false } = {}) {
+    if (name === 'recent') name = 'beers'; // gamle lenker til «Siste øl»
+    if (!TABS.includes(name)) name = 'years';
+    for (const b of document.querySelectorAll('#menu [data-tab]')) {
+      if (b.dataset.tab === name) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+    }
     for (const id of TABS) $(`panel-${id}`).hidden = id !== name;
+    $('section-name').textContent = t(`tab_${name}`);
     if (location.hash !== `#${name}`) history.replaceState(null, '', `#${name}`);
+    // Står toppen fast, start den nye fanen rett under den i stedet for midt i.
+    if (scroll) {
+      const y = $(`panel-${name}`).getBoundingClientRect().top + window.scrollY - document.querySelector('.appbar').offsetHeight - 12;
+      if (window.scrollY > y) window.scrollTo(0, y);
+    }
+  }
+
+  /* ---------- Meny ---------- */
+  function setMenu(open, { returnFocus = false } = {}) {
+    $('menu').hidden = !open;
+    $('menu-toggle').setAttribute('aria-expanded', String(open));
+    document.body.classList.toggle('menu-open', open);
+    if (open) ($('menu').querySelector('[aria-current="page"]') ?? $('menu').querySelector('button')).focus();
+    else if (returnFocus) $('menu-toggle').focus();
   }
 
   /* ---------- Oppstart ---------- */
@@ -162,12 +184,18 @@
   views.init();
   compare.init();
   DFU.yearsView.init();
-  $('tabs').addEventListener('click', e => { const b = e.target.closest('[role="tab"]'); if (b) selectTab(b.dataset.tab); });
+  $('menu-toggle').addEventListener('click', () => setMenu($('menu').hidden));
+  $('menu').addEventListener('click', e => {
+    const b = e.target.closest('[data-tab]');
+    if (b) { setMenu(false); selectTab(b.dataset.tab, { scroll: true }); }
+  });
+  document.addEventListener('click', e => { if (!$('menu').hidden && !e.target.closest('#menu, #menu-toggle')) setMenu(false); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('menu').hidden) setMenu(false, { returnFocus: true }); });
   $('trend-metric').addEventListener('click', e => {
     const b = e.target.closest('button[data-metric]');
     if (b) { trendMetric = b.dataset.metric; renderTrend(); }
   });
-  $('refresh').addEventListener('click', () => refresh());
+  $('refresh').addEventListener('click', () => { setMenu(false); refresh(); });
   selectTab(location.hash.slice(1));
   setInterval(updateStatus, 60000);
 

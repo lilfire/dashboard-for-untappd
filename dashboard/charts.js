@@ -16,13 +16,18 @@
   }
 
   const time = p => Date.parse(`${p.date}T12:00:00`);
+  // Smal skjerm får smalere viewBox, ellers skaleres teksten ned til det uleselige.
+  const narrow = globalThis.matchMedia?.('(max-width: 600px)');
 
   function lineChart(container, input, { fmtValue = String, fmtDate = String } = {}) {
     container.textContent = '';
+    container._chart = [input, { fmtValue, fmtDate }];
     const single = !input.length || input[0]?.points === undefined;
     const series = (single ? [{ points: input, cls: '', label: '' }] : input).filter(s => s.points.length);
     if (!series.length) return;
-    const W = 720, H = 240, m = { t: 16, r: 64, b: 30, l: 52 };
+    const [W, H, m] = narrow?.matches
+      ? [360, 260, { t: 16, r: 44, b: 30, l: 40 }]
+      : [720, 240, { t: 16, r: 64, b: 30, l: 52 }];
     const all = series.flatMap(s => s.points);
     const values = all.map(p => p.value);
     const times = all.map(time);
@@ -78,6 +83,11 @@
     svg.prepend(title);
     container.append(svg);
   }
+
+  // Tegn på nytt når bredden krysser grensen (rotasjon, smalere vindu).
+  narrow?.addEventListener?.('change', () => {
+    for (const c of document.querySelectorAll('.chart')) if (c._chart) lineChart(c, ...c._chart);
+  });
 
   root.DFU = root.DFU || {};
   root.DFU.charts = { lineChart };

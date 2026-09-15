@@ -1,7 +1,7 @@
-// Visningene i dashbordet: bryggerier, land, stiler og siste øl.
+// Visningene i dashbordet: bryggerier, land, stiler og mine øl.
 (function (root) {
   const { i18n } = root.DFU;
-  const { html, raw, render, escText } = root.DFU.html;
+  const { html, raw, render, append, escText } = root.DFU.html;
   const { t } = i18n;
   const $ = id => document.getElementById(id);
   const UNTAPPD = 'https://untappd.com';
@@ -374,34 +374,116 @@
   // Årsfanen sier fra når historikken er hentet, så ølene kan vises under hver stil.
   document.addEventListener('dfu:history', () => { if (S.families.length) renderStyles(); });
 
-  /* ---------- Siste øl ---------- */
-  function renderRecent(recent, username) {
-    const fmt = v => (v == null ? '–' : v.toLocaleString(i18n.locale(), { maximumFractionDigits: 2 }));
-    render($('r-rows'), recent.length ? recent.map(b => {
-      let rating = html`<span class="sub-line">${t('notRated')} / ${fmt(b.ratingGlobal)}</span>`;
-      if (b.ratingYou != null) {
-        const d = b.ratingGlobal != null ? b.ratingYou - b.ratingGlobal : null;
-        const cls = d == null ? '' : d >= 0.25 ? 'up' : d <= -0.25 ? 'down' : '';
-        rating = html`<b class="${cls}">${fmt(b.ratingYou)}</b> / ${fmt(b.ratingGlobal)}`;
-      }
-      const when = b.recentAt || b.recent;
-      const whenText = when ? i18n.date(when) : '–';
-      const checkin = b.recentCheckinId && username
-        ? html`<a href="${UNTAPPD}/user/${encodeURIComponent(username)}/checkin/${b.recentCheckinId}" target="_blank" rel="noopener">${whenText}</a>`
-        : whenText;
-      return html`<tr>
-        <td><a href="${UNTAPPD}${b.url ?? ''}" target="_blank" rel="noopener">${b.name}</a>
-          <span class="sub-line">${b.brewery} · ${b.style}</span></td>
-        <td class="rating">${rating}</td>
-        <td class="num">${b.abv == null ? '–' : `${fmt(b.abv)} %`}</td>
-        <td class="num">${checkin}</td></tr>`;
-    }) : emptyRow(4));
+  /* ---------- Mine øl ---------- */
+  // Alle ølene fra historikken, med søk og sortering. Radene legges til i biter når listen scrolles.
+  // Uten historikk vises de 25 siste fra ølsiden.
+  const R = { q: '', sort: 'recent-desc', fallback: [], username: null, list: [], shown: 0, query: '' };
+  const BEERS_PAGE = 50;
+
+  function allBeers() {
+    const history = root.DFU.yearsView?.state?.history?.beers ?? [];
+    return history.length ? root.DFU.history.merge(history, R.fallback) : R.fallback;
   }
+
+  // Tomme verdier havner alltid sist, uansett retning. Navn avgjør ved likhet.
+  function beerSorter(sort) {
+    const [key, dir] = sort.split('-');
+    const sign = dir === 'asc' ? 1 : -1;
+    const c = collator();
+    const byName = (a, b) => c.compare(a.name ?? '', b.name ?? '');
+    if (key === 'name') return (a, b) => sign * byName(a, b);
+    const value = {
+      recent: b => b.recentAt || b.recent,
+      first: b => b.firstAt || b.first,
+      rating: b => b.ratingYou,
+      global: b => b.ratingGlobal,
+      checkins: b => b.checkins,
+      abv: b => b.abv,
+    }[key];
+    return (a, b) => {
+      const x = value(a), y = value(b);
+      if (x == null || y == null) return (x == null) - (y == null) || byName(a, b);
+      const d = typeof x === 'string' ? String(x).localeCompare(String(y)) : x - y;
+      return sign * d || byName(a, b);
+    };
+  }
+
+  function beerRow(b, q) {
+    const fmt = v => (v == null ? '–' : v.toLocaleString(i18n.locale(), { maximumFractionDigits: 2 }));
+    let rating = html`<span class="sub-line">${t('notRated')} / ${fmt(b.ratingGlobal)}</span>`;
+    if (b.ratingYou != null) {
+      const d = b.ratingGlobal != null ? b.ratingYou - b.ratingGlobal : null;
+      const cls = d == null ? '' : d >= 0.25 ? 'up' : d <= -0.25 ? 'down' : '';
+      rating = html`<b class="${cls}">${fmt(b.ratingYou)}</b> / ${fmt(b.ratingGlobal)}`;
+    }
+    const when = b.recentAt || b.recent;
+    const whenText = when ? i18n.date(when) : '–';
+    const checkin = b.recentCheckinId && R.username
+      ? html`<a href="${UNTAPPD}/user/${encodeURIComponent(R.username)}/checkin/${b.recentCheckinId}" target="_blank" rel="noopener">${whenText}</a>`
+      : whenText;
+    const sub = [b.brewery, b.style].filter(Boolean).map(s => highlight(s, q));
+    return html`<tr>
+      <td><a href="${UNTAPPD}${b.url ?? ''}" target="_blank" rel="noopener">${highlight(b.name ?? '', q)}</a>
+        <span class="sub-line">${sub.flatMap((s, i) => (i ? [' · ', s] : [s]))}${b.checkins > 1 ? ` · ${num(b.checkins)}×` : ''}</span></td>
+      <td class="rating">${rating}</td>
+      <td class="num">${b.abv == null ? '–' : `${fmt(b.abv)} %`}</td>
+      <td class="num">${checkin}</td></tr>`;
+  }
+
+  function renderBeers() {
+    const q = fold(R.q.trim());
+    const beers = allBeers();
+    R.query = q;
+    R.list = (q ? beers.filter(b => fold([b.name, b.brewery, b.style].filter(Boolean).join('\n')).includes(q)) : beers.slice())
+      .sort(beerSorter(R.sort));
+    R.shown = Math.min(BEERS_PAGE, R.list.length);
+    render($('r-rows'), R.list.length ? R.list.slice(0, R.shown).map(b => beerRow(b, q)) : emptyRow(4));
+    $('r-more').hidden = R.shown >= R.list.length;
+    watchMore();
+
+    const hasHistory = beers !== R.fallback;
+    $('r-meta').textContent = (q
+      ? t('showing', num(R.list.length), num(beers.length))
+      : t('totalBeers', num(beers.length)))
+      + (hasHistory ? '' : ` · ${t('beers_needHistory')}`);
+    $('r-sort').value = R.sort;
+  }
+
+  // Legger neste bit til nederst i stedet for å tegne hele listen på nytt.
+  function appendBeers() {
+    if (R.shown >= R.list.length) return;
+    const next = R.list.slice(R.shown, R.shown + BEERS_PAGE);
+    R.shown += next.length;
+    append($('r-rows'), next.map(b => beerRow(b, R.query)));
+    $('r-more').hidden = R.shown >= R.list.length;
+    watchMore();
+  }
+
+  // Observeren melder bare endringer. Å observere på nytt gir en ny melding, så en vaktpost
+  // som fortsatt synes etter en bit (høy skjerm) henter neste bit også.
+  let moreObserver = null;
+  function watchMore() {
+    if (!moreObserver) return;
+    moreObserver.unobserve($('r-more'));
+    moreObserver.observe($('r-more'));
+  }
+
+  function initBeers() {
+    $('r-q').addEventListener('input', e => { R.q = e.target.value; renderBeers(); });
+    $('r-sort').addEventListener('change', e => { R.sort = e.target.value; renderBeers(); });
+    moreObserver = new IntersectionObserver(entries => {
+      if (entries.some(e => e.isIntersecting)) appendBeers();
+    }, { rootMargin: '600px 0px' });
+    moreObserver.observe($('r-more'));
+  }
+
+  document.addEventListener('dfu:history', () => { if (R.username) renderBeers(); });
 
   function init() {
     initControls('b', B, renderBreweries);
     initControls('c', C, renderCountries);
     initControls('s', S, renderStyles);
+    initBeers();
     $('s-rows').addEventListener('toggle', e => {
       if (S.q || S.bucket) return;
       const { family, style } = e.target.dataset ?? {};
@@ -438,7 +520,9 @@
     renderQuickFilter('s', countGroups(), S.families.flatMap(f => f.styles), 'bucket_unitStyles', sum(data.styles));
     renderStyles();
 
-    renderRecent(data.recent, username);
+    R.fallback = data.recent ?? [];
+    R.username = username;
+    renderBeers();
   }
 
   // Nøkkeltallene øverst, og samme stripe for vennen i sammenligningen.

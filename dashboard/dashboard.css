@@ -79,12 +79,6 @@ h2 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .07em; text-t
 .chip { display: inline-flex; gap: 4px; padding: 2px 8px; border-radius: 999px; background: var(--new-soft); color: var(--ink); font-size: 13px; }
 .chip b { color: var(--new); font-weight: 600; }
 
-/* Faner */
-.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
-.tabs button { appearance: none; background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 12px; cursor: pointer;
-  font-weight: 600; color: var(--muted); white-space: nowrap; margin-bottom: -1px; }
-.tabs button:hover { color: var(--ink); }
-.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--amber); }
 .panel { display: grid; gap: 10px; }
 
 .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -114,6 +108,8 @@ select { padding: 9px 10px; border: 1px solid var(--line); border-radius: 6px; b
 
 /* Tabeller */
 .table-wrap { overflow-x: auto; }
+/* Vaktpost under «Mine øl»: når den synes, legges flere rader til. */
+.load-more { height: 1px; }
 table.list { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .list th { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 600;
   letter-spacing: .06em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
@@ -306,10 +302,6 @@ h2 { font-size: 12px; letter-spacing: .09em; }
 .kpi .v { font-size: clamp(24px, 2.5vw, 34px); font-weight: 650; letter-spacing: -.055em; }
 .kpi .l { font-size: 10px; letter-spacing: .07em; }
 .chip { padding: 4px 10px; font-size: 12px; }
-.tabs { gap: 6px; padding: 6px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); }
-.tabs button { flex: 1 0 auto; padding: 11px 16px; border: 0; border-radius: 8px; margin: 0; font-size: 13px; transition: background .15s, color .15s; }
-.tabs button:hover { background: var(--surface-raised); }
-.tabs button[aria-selected="true"] { color: var(--amber-ink); background: var(--amber-soft); box-shadow: inset 0 0 0 1px var(--amber); }
 .panel { gap: 18px; padding: 26px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); min-width: 0; }
 .dist-head { gap: 8px; }
 .dist-head h2 { color: var(--ink); }
@@ -363,26 +355,6 @@ footer { padding-top: 22px; font-size: 11px; line-height: 1.8; }
   .kpi:nth-child(4) { border-right: 0; }
   .kpi:nth-child(n+5) { border-bottom: 0; }
   .dist { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-@media (max-width: 600px) {
-  .wrap { padding: 18px 14px 28px; gap: 20px; }
-  .top { align-items: flex-start; gap: 16px; padding-bottom: 18px; }
-  .status { width: 100%; }
-  .status-text { flex-basis: 100%; }
-  #content { gap: 18px; }
-  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .kpi { padding: 14px 16px; }
-  .kpi:nth-child(even) { border-right: 0; }
-  .kpi:nth-child(n+5) { border-bottom: 1px solid var(--line); }
-  .kpi:last-child { grid-column: 1 / -1; border-bottom: 0; }
-  .kpi .v { font-size: 30px; }
-  .panel { padding: 16px; gap: 16px; }
-  .bucket { padding: 10px; }
-  .tabs button { padding: 10px 14px; }
-  .controls > select { width: 100%; }
-  .list th, .list td { padding: 12px; }
-  .list .bar-col { min-width: 110px; }
-  .cards { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* Årsrapport: seksjonert oppsett, men samme skala som resten av siden. */
@@ -597,3 +569,158 @@ footer { padding-top: 22px; font-size: 11px; line-height: 1.8; }
 .cmp-badge-row > span:last-child { min-width: 0; overflow-wrap: anywhere; }
 .cmp-badge-row img, .cmp-badge-row .ph { width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%; object-fit: cover; background: var(--track); }
 @media (max-width: 600px) { .cmp-badges .cmp-metrics { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- Toppstripe og meny ---------- */
+.wrap.app { --gutter: 36px; padding: 0 var(--gutter) 40px; }
+@media (max-width: 1000px) { .wrap.app { --gutter: 24px; } }
+.appbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 14px;
+  margin-inline: calc(-1 * var(--gutter)); padding: 12px var(--gutter); background: var(--ground); border-bottom: 1px solid var(--line); }
+.appbar-icon { width: 40px; height: 40px; object-fit: contain; flex-shrink: 0; }
+.appbar-title { display: grid; min-width: 0; flex: 1; }
+.appbar h1 { font-size: 20px; font-weight: 650; line-height: 1.2; letter-spacing: -.02em; padding: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.appbar-section { font-size: 12px; color: var(--muted); line-height: 1.3; }
+.appbar .status-text { margin: 0; font-size: 12px; text-align: right; }
+
+.menu-toggle { position: relative; display: grid; place-items: center; flex-shrink: 0; width: 42px; height: 42px; padding: 0; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.menu-toggle:hover { border-color: var(--muted); }
+.burger, .burger::before, .burger::after { display: block; width: 18px; height: 2px; border-radius: 1px; background: var(--ink); transition: transform .2s, background .2s; }
+.burger { position: relative; }
+.burger::before, .burger::after { content: ""; position: absolute; left: 0; }
+.burger::before { top: -6px; }
+.burger::after { top: 6px; }
+.menu-toggle[aria-expanded="true"] .burger { background: transparent; }
+.menu-toggle[aria-expanded="true"] .burger::before { transform: translateY(6px) rotate(45deg); }
+.menu-toggle[aria-expanded="true"] .burger::after { transform: translateY(-6px) rotate(-45deg); }
+/* Prikk på knappen mens data hentes, siden statusen ellers ligger i menyen. */
+.menu-toggle.busy::after { content: ""; position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--amber);
+  animation: busy-pulse 1s ease-in-out infinite alternate; }
+@keyframes busy-pulse { from { opacity: .35; } to { opacity: 1; } }
+
+.menu { position: absolute; top: calc(100% + 6px); left: var(--gutter); width: 300px; max-height: calc(100dvh - 90px); overflow-y: auto;
+  display: grid; gap: 6px; padding: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 16px 40px #00000030; }
+.menu-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.menu-list button, .menu-action { appearance: none; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 10px 14px;
+  border: 0; border-radius: 9px; background: none; text-align: left; text-decoration: none; font-size: 14px; font-weight: 600; cursor: pointer; }
+.menu-list button:hover, .menu-action:hover { background: var(--surface-raised); }
+.menu-list button[aria-current="page"] { background: var(--amber-soft); color: var(--amber-ink); box-shadow: inset 3px 0 0 var(--amber); }
+.menu-foot { display: grid; gap: 2px; padding-top: 6px; border-top: 1px solid var(--line); }
+.menu-action > span:last-child { display: grid; min-width: 0; }
+.menu-action small { font-size: 11px; font-weight: 400; color: var(--muted); }
+.menu-action:disabled { cursor: wait; opacity: .7; }
+.menu-icon { width: 18px; text-align: center; font-size: 16px; color: var(--muted); }
+body.menu-open::after { content: ""; position: fixed; inset: 0; z-index: 25; background: #00000038; }
+@media (prefers-reduced-motion: reduce) { .menu-toggle.busy::after { animation: none; } }
+
+/* ---------- Mobil ---------- */
+/* Samlet til slutt, så reglene vinner over lagene over uten !important. */
+@media (max-width: 600px) {
+  .wrap { padding: 8px 12px 28px; gap: 10px; }
+  .wrap.app { --gutter: 12px; gap: 12px; }
+  .appbar { padding-block: 8px; gap: 10px; }
+  .appbar-icon { width: 32px; height: 32px; }
+  .appbar h1 { font-size: 17px; }
+  .appbar .status-text { display: none; }
+  .menu { left: 8px; right: 8px; width: auto; }
+  #content { gap: 12px; }
+
+  /* Nøkkeltall: fire smale kolonner, kantene tegnes av mellomrommet i gridet. */
+  .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border-radius: 10px; }
+  .kpi, .kpi:nth-child(n) { padding: 6px 8px; gap: 0; border: 0; background: var(--surface); grid-column: auto; }
+  .kpi:last-child { grid-column: span 2; }
+  .kpi .v { font-size: 16px; letter-spacing: -.02em; }
+  .kpi .l { font-size: 9px; letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .panel { padding: 12px; gap: 12px; border-radius: 12px; }
+  .controls > select { width: 100%; }
+  .search, select { min-height: 42px; }
+  .dist { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .bucket { padding: 8px; }
+  .bucket .num { font-size: 18px; }
+
+  /* Bryggeri- og landtabeller */
+  .table-wrap { border-radius: 8px; }
+  .list th, .list td { padding: 10px 6px; }
+  .list th:first-child, .list td:first-child { padding-left: 10px; }
+  .list th:last-child, .list td:last-child { padding-right: 10px; }
+  .list .rank { width: 34px; font-size: 11px; }
+  .list .bar-col { width: 92px; min-width: 0; }
+  .cnt { gap: 8px; }
+  .bar { min-width: 24px; }
+  .row-toggle { display: inline; padding-left: 12px; }
+  .list a.ext { margin-left: 4px; }
+  /* Andelen er overflødig når søylen viser forholdet, og tabellen får da plass. */
+  #panel-countries table.list > thead th.num, #panel-countries table.list > tbody > tr > td.num { display: none; }
+  .list tr.beers > td { padding-left: 8px; }
+  .list tr.beers table.list td { padding: 6px; }
+  .list.beer-list td:first-child { font-size: 11px; }
+
+  /* Stiler */
+  .family summary { grid-template-columns: minmax(0, 1fr) 30% auto; gap: 8px; padding: 12px; }
+  .style > summary { grid-template-columns: minmax(0, 1fr) 30%; gap: 8px; padding: 10px 12px 10px 24px; }
+  .style table.list td { padding: 6px 8px; }
+  .style table.list td:first-child, .list tr.beers .style table.list td:first-child { padding-left: 24px; }
+  .style > .meta { padding: 8px 24px 10px; }
+
+  /* Mine øl som kort:navnet øverst, rangering, alkohol og dato på linjen under. */
+  .list.recent thead { display: none; }
+  .list.recent tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 14px; align-items: baseline;
+    padding: 12px 10px; border-bottom: 1px solid var(--line); }
+  .list.recent tbody tr:last-child { border-bottom: 0; }
+  .list.recent td, .list.recent td:first-child, .list.recent td:last-child { padding: 0; border: 0; background: none; }
+  .list.recent tbody tr:hover > td { background: none; }
+  .list.recent td:first-child { grid-column: 1 / -1; }
+  .list.recent td.rating, .list.recent td.num { font-size: 13px; }
+  .list.recent td.rating .sub-line { display: inline; }
+  .list.recent td.num { color: var(--muted); }
+  .list.recent td.empty { grid-column: 1 / -1; }
+
+  /* Segmentknapper fyller raden jevnt. */
+  .segmented { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); width: 100%; gap: 1px; background: var(--line); justify-self: stretch; }
+  .segmented button { padding: 9px 4px; font-size: 12px; line-height: 1.2; overflow-wrap: anywhere; }
+  .segmented button + button { border-left: 0; }
+
+  /* Linjediagram */
+  .chart { padding: 10px 6px; }
+  .chart .axis { font-size: 12px; }
+  .chart .end-label { font-size: 13px; }
+
+  /* År */
+  .year-hero { padding: 18px; gap: 12px; }
+  #y-cards .year-hero h2 { font-size: 26px; margin: 6px 0; }
+  #y-cards .year-metrics .value { font-size: 32px; }
+  .year-section > h2 { font-size: 18px; }
+  #y-cards .card { padding: 14px; }
+  .year-chart.months { min-width: 0; }
+  #y-cards .bars.months, #y-cards .bar-labels.months { gap: 3px; }
+  #y-cards .bars .b em, #y-cards .bar-labels { font-size: 10px; }
+  #y-cards .bar-labels.months span { overflow: hidden; text-overflow: clip; white-space: nowrap; }
+  .year-rating-row, .year-rating-detail > summary.year-rating-row { grid-template-columns: 48px minmax(0, 1fr) 36px; gap: 10px; }
+  .year-rating-detail > summary.year-rating-row { grid-template-columns: 48px minmax(0, 1fr) 36px 12px; }
+
+  /* Sammenlign */
+  #cmp-form { padding: 12px; border-radius: 12px; }
+  #cmp-form .combo { flex-basis: 100%; }
+  #cmp-form > .btn { width: 100%; justify-content: center; }
+  #panel-compare { gap: 14px; }
+  #panel-compare .cmp-title { font-size: 22px; }
+  #panel-compare h2 { font-size: 18px; }
+  .cmp-task { padding: 12px 14px; border-radius: 12px; }
+  .cmp-stat { padding: 12px; gap: 6px; border-radius: 12px; }
+  .cmp-stat strong { font-size: 24px; }
+  .cmp-chart-card, #panel-compare .cmp-col { padding: 14px; gap: 12px; border-radius: 12px; }
+  .cmp-legend { gap: 8px 16px; }
+  #panel-compare .cmp-col ol { max-height: 60vh; }
+  #panel-compare .cmp-col li { padding: 10px 0; gap: 12px; line-height: 1.45; }
+  #cmp-year-select { font-size: 20px; }
+  #panel-compare .year-cmp th, #panel-compare .year-cmp td { padding: 8px 4px; font-size: 11px; }
+  #panel-compare .year-cmp th:first-child, #panel-compare .year-cmp td:first-child { padding-left: 8px; }
+  .cmp-months { gap: 12px; }
+
+  /* Merker: tre kolonner */
+  .badge-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+  .badge-tile { padding: 10px 6px; }
+  .badge-tile img, .badge-tile .ph { width: 56px; height: 56px; }
+  .badge-tile .name { font-size: 12px; }
+  .badge-section > h2 { font-size: 18px; }
+}

@@ -152,7 +152,7 @@ henting som hovedkilde og lar fane og besøk bare fylle inn dato.
 - **Land:** rangert liste med stolper
 - **Stiler:** gruppert i familier (tekst før « - »), med mulighet til å klikke seg ned i hver familie
 - **Merker:** maks nivå og spesialmerker gruppert etter år (se versjon 1.2)
-- **Siste øl:** de 25 nyeste, din rangering mot den globale
+- **Mine øl:** alle ølene fra historikken (de 25 siste til den er hentet), med søk, sortering og lat innlasting
 - **Nytt siden sist:** nye bryggerier, land og stiler, og bryggerier som har fått flere øl
 - **Utvikling over tid:** kurve over unike øl, bryggerier og land fra øyeblikksbildene
 - **Status:** «Oppdatert for X min siden» og Oppdater-knapp

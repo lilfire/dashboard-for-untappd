@@ -8,17 +8,32 @@
 <link rel="stylesheet" href="dashboard.css">
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <div class="brand"><img src="../icons/icon-32.png" alt="" width="22" height="22"><span>Dashboard for Untappd</span></div>
-    <div class="status">
-      <span id="status" class="status-text" aria-live="polite"></span>
-      <button id="refresh" class="btn primary" type="button" data-i18n="refresh"></button>
-      <a class="btn" href="../options/options.html" data-i18n="settings"></a>
+<div class="wrap app">
+  <header class="appbar">
+    <button id="menu-toggle" class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu" data-i18n-aria-label="menu"><span class="burger" aria-hidden="true"></span></button>
+    <img class="appbar-icon" src="../icons/icon-96.png" alt="Dashboard for Untappd" width="40" height="40">
+    <div class="appbar-title">
+      <h1 id="user-name">&nbsp;</h1>
+      <span class="appbar-section" id="section-name"></span>
     </div>
+    <span id="status" class="status-text" aria-live="polite"></span>
+    <nav class="menu" id="menu" data-i18n-aria-label="menu" hidden>
+      <ul class="menu-list">
+        <li><button type="button" data-tab="years" data-i18n="tab_years"></button></li>
+        <li><button type="button" data-tab="breweries" data-i18n="tab_breweries"></button></li>
+        <li><button type="button" data-tab="countries" data-i18n="tab_countries"></button></li>
+        <li><button type="button" data-tab="styles" data-i18n="tab_styles"></button></li>
+        <li><button type="button" data-tab="badges" data-i18n="tab_badges"></button></li>
+        <li><button type="button" data-tab="beers" data-i18n="tab_beers"></button></li>
+        <li><button type="button" data-tab="trend" data-i18n="tab_trend"></button></li>
+        <li><button type="button" data-tab="compare" data-i18n="tab_compare"></button></li>
+      </ul>
+      <div class="menu-foot">
+        <button id="refresh" class="menu-action" type="button"><span class="menu-icon" aria-hidden="true">↻</span><span><span id="refresh-label" data-i18n="refresh"></span><small id="menu-status"></small></span></button>
+        <a class="menu-action" href="../options/options.html"><span class="menu-icon" aria-hidden="true">⚙</span><span data-i18n="settings"></span></a>
+      </div>
+    </nav>
   </header>
-
-  <h1 id="user-name">&nbsp;</h1>
 
   <div id="alert" class="alert" role="alert" hidden>
     <p id="alert-text"></p>
@@ -31,18 +46,8 @@
     <section class="kpis" id="kpis" aria-label="Nøkkeltall"></section>
 
 
-    <nav class="tabs" role="tablist" id="tabs">
-      <button type="button" role="tab" data-tab="breweries" data-i18n="tab_breweries"></button>
-      <button type="button" role="tab" data-tab="countries" data-i18n="tab_countries"></button>
-      <button type="button" role="tab" data-tab="styles" data-i18n="tab_styles"></button>
-      <button type="button" role="tab" data-tab="badges" data-i18n="tab_badges"></button>
-      <button type="button" role="tab" data-tab="recent" data-i18n="tab_recent"></button>
-      <button type="button" role="tab" data-tab="trend" data-i18n="tab_trend"></button>
-      <button type="button" role="tab" data-tab="years" data-i18n="tab_years"></button>
-      <button type="button" role="tab" data-tab="compare" data-i18n="tab_compare"></button>
-    </nav>
 
-    <section class="panel" id="panel-breweries" role="tabpanel">
+    <section class="panel" id="panel-breweries" role="region" hidden>
       <div class="controls">
         <input class="search" id="b-q" type="search" autocomplete="off" data-i18n-placeholder="search_breweries" data-i18n-aria-label="search_breweries">
         <select id="b-sort" data-i18n-aria-label="sort_countDesc">
@@ -69,7 +74,7 @@
       </div>
     </section>
 
-    <section class="panel" id="panel-countries" role="tabpanel" hidden>
+    <section class="panel" id="panel-countries" role="region" hidden>
       <div class="sync">
         <div class="row">
           <p class="meta" id="c-sync-text"></p>
@@ -105,7 +110,7 @@
       </div>
     </section>
 
-    <section class="panel" id="panel-styles" role="tabpanel" hidden>
+    <section class="panel" id="panel-styles" role="region" hidden>
       <div class="controls">
         <input class="search" id="s-q" type="search" autocomplete="off" data-i18n-placeholder="search_styles" data-i18n-aria-label="search_styles">
         <select id="s-sort" data-i18n-aria-label="sort_countDesc">
@@ -127,7 +132,7 @@
       <div class="families" id="s-rows"></div>
     </section>
 
-    <section class="panel" id="panel-badges" role="tabpanel" hidden>
+    <section class="panel" id="panel-badges" role="region" hidden>
       <div class="sync">
         <div class="row">
           <p class="meta" id="bd-sync-text"></p>
@@ -140,17 +145,32 @@
       <div class="badge-sections" id="bd-out"></div>
     </section>
 
-    <section class="panel" id="panel-recent" role="tabpanel" hidden>
-      <p class="meta" data-i18n="recent_hint"></p>
+    <section class="panel" id="panel-beers" role="region" hidden>
+      <div class="controls">
+        <input class="search" id="r-q" type="search" autocomplete="off" data-i18n-placeholder="search_beers" data-i18n-aria-label="search_beers">
+        <select id="r-sort" data-i18n-aria-label="sort_label">
+          <option value="recent-desc" data-i18n="sort_recentDesc"></option>
+          <option value="recent-asc" data-i18n="sort_recentAsc"></option>
+          <option value="first-desc" data-i18n="sort_firstDesc"></option>
+          <option value="rating-desc" data-i18n="sort_ratingDesc"></option>
+          <option value="global-desc" data-i18n="sort_globalDesc"></option>
+          <option value="checkins-desc" data-i18n="sort_checkinsDesc"></option>
+          <option value="abv-desc" data-i18n="sort_abvDesc"></option>
+          <option value="name-asc" data-i18n="sort_nameAsc"></option>
+          <option value="name-desc" data-i18n="sort_nameDesc"></option>
+        </select>
+      </div>
+      <p class="meta" id="r-meta" aria-live="polite"></p>
       <div class="table-wrap">
         <table class="list recent">
           <thead><tr><th data-i18n="col_beer"></th><th data-i18n="col_rating"></th><th class="num" data-i18n="col_abv"></th><th class="num" data-i18n="col_date"></th></tr></thead>
           <tbody id="r-rows"></tbody>
         </table>
       </div>
+      <div class="load-more" id="r-more" hidden></div>
     </section>
 
-    <section class="panel" id="panel-trend" role="tabpanel" hidden>
+    <section class="panel" id="panel-trend" role="region" hidden>
       <div class="segmented" id="trend-metric" role="group">
         <button type="button" data-metric="unique" data-i18n="kpi_unique"></button>
         <button type="button" data-metric="breweries" data-i18n="kpi_breweries"></button>
@@ -161,7 +181,7 @@
       <p class="meta" id="trend-note"></p>
     </section>
 
-    <section class="panel" id="panel-compare" role="tabpanel" hidden>
+    <section class="panel" id="panel-compare" role="region" hidden>
       <h2 class="cmp-title" data-i18n="compare_heading"></h2>
       <form class="controls" id="cmp-form">
         <div class="combo">
@@ -248,7 +268,7 @@
       </div>
     </section>
 
-    <section class="panel" id="panel-years" role="tabpanel" hidden>
+    <section class="panel" id="panel-years" role="region">
       <div class="sync">
         <div class="row">
           <p class="meta" id="y-sync-text"></p>

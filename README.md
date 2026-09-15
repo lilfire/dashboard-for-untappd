@@ -10,7 +10,7 @@ Nettleserutvidelse for Firefox, Chrome og andre Chromium-baserte nettlesere, ogs
 - **Bryggerier:** søk, filter på antall øl og sortering, med lenke til bryggerisiden på Untappd
 - **Land og stiler:** rangert, med stiler gruppert i familier
 - **Merker:** et troféskap med merkene du har tatt til maks nivå, og spesialmerker (eventer, høytider, kampanjer) gruppert etter år
-- **Siste øl:** de 25 nyeste, med din rangering mot den globale
+- **Mine øl:** alle ølene du har drukket, med søk, sortering og din rangering mot den globale
 - **Utvikling:** kurve over unike øl, bryggerier, land og stiler over tid
 - **År:** årsoppsummering for hvert år, i stil med Recappd
 - **Sammenlign:** felles bryggerier, land og stiler med en venn, og året side om side
