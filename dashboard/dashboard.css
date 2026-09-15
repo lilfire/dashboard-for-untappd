@@ -75,7 +75,6 @@ h2 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .07em; text-t
 .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: grid; gap: 2px; }
 .kpi .v { font-family: var(--display); font-weight: 700; font-size: 26px; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .kpi .l { font-size: 12px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
-.kpi .d { font-size: 12px; font-weight: 600; color: var(--new); font-variant-numeric: tabular-nums; }
 
 .chip { display: inline-flex; gap: 4px; padding: 2px 8px; border-radius: 999px; background: var(--new-soft); color: var(--ink); font-size: 13px; }
 .chip b { color: var(--new); font-weight: 600; }
@@ -93,10 +92,14 @@ h2 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .07em; text-t
 select { padding: 9px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
 .meta { margin: 0; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
-/* Fordeling */
-.dist-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.dist-head p { margin: 0; font-size: 13px; color: var(--muted); }
-.dist { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+/* Hurtigfilter */
+.dist-head { display: flex; align-items: baseline; gap: 12px; list-style: none; cursor: pointer; }
+.dist-head::-webkit-details-marker { display: none; }
+.dist-head::before { content: "▸"; color: var(--muted); font-size: 11px; }
+.dist-box[open] > .dist-head::before { content: "▾"; }
+.dist-active { font-size: 12px; font-weight: 600; color: var(--amber-ink); font-variant-numeric: tabular-nums; }
+.dist-hint { margin: 10px 0 8px; font-size: 13px; color: var(--muted); }
+.dist { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
 @media (max-width: 680px) { .dist { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .bucket { appearance: none; text-align: left; cursor: pointer; display: grid; gap: 5px; padding: 11px 12px;
   background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
@@ -105,6 +108,7 @@ select { padding: 9px 10px; border: 1px solid var(--line); border-radius: 6px; b
 .bucket .lbl { font-size: 12px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
 .bucket .num { font-family: var(--display); font-weight: 700; font-size: 24px; line-height: 1; font-variant-numeric: tabular-nums; }
 .bucket .sub { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bucket .num small { font-family: var(--body); font-size: 12px; font-weight: 400; letter-spacing: 0; color: var(--muted); }
 .share { height: 4px; background: var(--track); border-radius: 2px; overflow: hidden; }
 .share i { display: block; height: 100%; background: var(--amber); }
 
@@ -136,11 +140,15 @@ table.list { width: 100%; border-collapse: collapse; font-variant-numeric: tabul
 .row-toggle:hover { color: var(--amber-ink); }
 .list a.ext { margin-left: 6px; color: var(--muted); text-decoration: none; font-size: 12px; }
 .list a.ext:hover { color: var(--amber-ink); }
-.list tr.beers > td { padding: 0 0 0 24px; background: var(--surface); }
+.list tr.beers > td { padding: 0 0 0 16px; background: var(--surface); }
 .list tr.beers table.list td { padding: 5px 10px; }
 .list tr.beers .styles { border-left: 2px solid var(--line); }
 .list tr.beers .style > summary { padding-left: 26px; }
+.list tr.beers .style table.list td:first-child { padding-left: 26px; }
 .list tr.beers > td > .meta { padding: 8px 12px; }
+/* Øl-tabeller i utvidede rader: dato og rangering krymper til innholdet, navnet får resten. */
+.list.beer-list td.num { width: 1%; }
+.list.beer-list td:first-child { text-align: left; color: var(--muted); }
 mark { background: var(--amber-soft); color: inherit; border-radius: 2px; }
 .sub-line { display: block; font-size: 13px; color: var(--muted); }
 .rating { white-space: nowrap; }
@@ -170,7 +178,8 @@ mark { background: var(--amber-soft); color: inherit; border-radius: 2px; }
 .style.flat > summary::before { content: ""; }
 .style[open] > summary::before { content: "▾"; }
 .style[open] > summary { border-bottom: 1px solid var(--line); }
-.style table.list td { padding: 5px 12px 5px 26px; }
+.style table.list td { padding: 5px 12px; }
+.style table.list td:first-child { padding-left: 26px; }
 .style > .meta { padding: 8px 26px 10px; }
 
 /* Utvikling */
@@ -187,6 +196,8 @@ mark { background: var(--amber-soft); color: inherit; border-radius: 2px; }
 .chart .dot { fill: var(--amber); }
 .chart .end-label { fill: var(--ink); font-size: 12px; font-weight: 600; }
 .chart-empty { margin: 0; color: var(--muted); }
+.chart .line.theirs { stroke: #8BACE0; }
+.chart .dot.theirs { fill: #8BACE0; }
 
 /* Sammenlign */
 .cmp-summary { margin: 0; font-weight: 600; }
@@ -246,6 +257,7 @@ footer { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line)
 .year-cmp { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .year-cmp th, .year-cmp td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: right; }
 .year-cmp th:first-child, .year-cmp td:first-child { text-align: left; }
+.year-cmp thead tr + tr th:first-child { text-align: right; }
 .year-cmp thead th { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
 .year-cmp td.win { color: var(--new); font-weight: 600; }
 
@@ -289,13 +301,10 @@ h2 { font-size: 12px; letter-spacing: .09em; }
 .btn.primary:hover { background: var(--amber-ink); border-color: var(--amber-ink); }
 .btn:disabled { cursor: wait; }
 .kpis { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
-.kpi { position: relative; border: 0; border-right: 1px solid var(--line); border-radius: 0; padding: 24px 18px; gap: 10px; align-content: start; background: transparent; }
+.kpi { position: relative; border: 0; border-right: 1px solid var(--line); border-radius: 0; padding: 16px 18px; gap: 6px; align-content: start; background: transparent; }
 .kpi:last-child { border-right: 0; }
 .kpi .v { font-size: clamp(24px, 2.5vw, 34px); font-weight: 650; letter-spacing: -.055em; }
 .kpi .l { font-size: 10px; letter-spacing: .07em; }
-.kpi:nth-child(2) { background: var(--amber-soft); }
-.kpi:nth-child(2) .v { color: var(--amber-ink); }
-.kpi .d { font-size: 11px; }
 .chip { padding: 4px 10px; font-size: 12px; }
 .tabs { gap: 6px; padding: 6px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); }
 .tabs button { flex: 1 0 auto; padding: 11px 16px; border: 0; border-radius: 8px; margin: 0; font-size: 13px; transition: background .15s, color .15s; }
@@ -304,16 +313,20 @@ h2 { font-size: 12px; letter-spacing: .09em; }
 .panel { gap: 18px; padding: 26px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); min-width: 0; }
 .dist-head { gap: 8px; }
 .dist-head h2 { color: var(--ink); }
-.dist-head p { font-size: 12px; }
-.dist { gap: 10px; }
-.bucket { gap: 9px; padding: 16px; border-radius: 10px; background: var(--ground); transition: border-color .15s, background .15s; }
+.dist-hint { font-size: 12px; }
+.dist { gap: 8px; }
+.bucket { gap: 5px; padding: 10px 12px; border-radius: 10px; background: var(--ground); transition: border-color .15s, background .15s; }
 .bucket .lbl { font-size: 10px; }
-.bucket .num { font-size: 28px; font-weight: 600; letter-spacing: -.04em; }
+.bucket .num { font-size: 20px; font-weight: 600; letter-spacing: -.04em; }
 .bucket .sub { font-size: 11px; }
 .share { margin-top: 4px; }
 .controls { gap: 10px; }
 .search, select { min-height: 44px; border-radius: 10px; background: var(--ground); font-size: 13px; }
 .search { padding: 12px 16px; }
+/* Egen pil, så den får luft til kanten i stedet for nettleserens pil helt ute. */
+select { appearance: none; padding: 0 40px 0 16px; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 21px) 50%, calc(100% - 16px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
 .search::placeholder { color: var(--muted); opacity: 1; }
 .meta { font-size: 12px; }
 .table-wrap { border: 1px solid var(--line); border-radius: 10px; }
@@ -358,14 +371,13 @@ footer { padding-top: 22px; font-size: 11px; line-height: 1.8; }
   .status-text { flex-basis: 100%; }
   #content { gap: 18px; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .kpi { padding: 20px 16px; }
+  .kpi { padding: 14px 16px; }
   .kpi:nth-child(even) { border-right: 0; }
   .kpi:nth-child(n+5) { border-bottom: 1px solid var(--line); }
   .kpi:last-child { grid-column: 1 / -1; border-bottom: 0; }
   .kpi .v { font-size: 30px; }
   .panel { padding: 16px; gap: 16px; }
-  .bucket { padding: 12px; }
-  .bucket .num { font-size: 25px; }
+  .bucket { padding: 10px; }
   .tabs button { padding: 10px 14px; }
   .controls > select { width: 100%; }
   .list th, .list td { padding: 12px; }
@@ -373,41 +385,35 @@ footer { padding-top: 22px; font-size: 11px; line-height: 1.8; }
   .cards { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* Annual report: give narrative content and rankings room to breathe. */
-#panel-years { background: transparent; padding: 0; border: 0; box-shadow: none; gap: 28px; }
-#panel-years > .sync { background: var(--surface); }
-#y-bar { gap: 18px; padding: 4px 0 24px; border-bottom: 1px solid var(--line); }
-#y-year { font-size: 28px; font-weight: 650; letter-spacing: -.04em; min-width: 140px; background: var(--surface); padding: 10px 18px; }
-#y-summary { font-size: 14px; flex: 1 1 220px; }
-#y-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 36px; }
-.year-section { display: grid; gap: 16px; min-width: 0; }
-.year-section > h2 { color: var(--ink); text-transform: none; font-size: 18px; letter-spacing: -.02em; }
-.year-metrics, .year-rankings, .year-details, .year-activity { display: grid; gap: 18px; min-width: 0; }
+/* Årsrapport: seksjonert oppsett, men samme skala som resten av siden. */
+#y-bar { gap: 12px; padding: 0 0 18px; border-bottom: 1px solid var(--line); }
+#y-summary { flex: 1 1 220px; }
+#y-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+.year-section { display: grid; gap: 12px; min-width: 0; }
+.year-section > h2 { color: var(--ink); }
+.year-metrics, .year-rankings, .year-details, .year-activity { display: grid; gap: 14px; min-width: 0; }
 .year-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .year-rankings, .year-details { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-#y-cards .card { min-width: 0; padding: 24px; gap: 14px; background: var(--surface); border-radius: 16px; }
-#y-cards .label { line-height: 1.6; overflow-wrap: anywhere; }
-#y-cards .value { font-size: clamp(36px, 4vw, 52px); line-height: 1.15; overflow-wrap: anywhere; }
-#y-cards .value.small { font-size: 24px; line-height: 1.4; letter-spacing: -.025em; }
-#y-cards .note { line-height: 1.8; overflow-wrap: anywhere; }
-#y-cards a { text-decoration: none; text-underline-offset: 4px; overflow-wrap: anywhere; }
+#y-cards .card { min-width: 0; }
+#y-cards .label, #y-cards .note, #y-cards .value { overflow-wrap: anywhere; }
+#y-cards .value.small { font-size: 20px; line-height: 1.25; }
+#y-cards a { text-decoration: none; text-underline-offset: 3px; overflow-wrap: anywhere; }
 #y-cards a:hover { color: var(--amber-ink); text-decoration: underline; }
 .year-metrics > .card:first-child { background: var(--amber-soft); border-color: var(--amber); }
 .year-metrics > .card:first-child .value { color: var(--amber-ink); }
 #y-cards .year-ranking ol { gap: 0; margin: 0; }
-#y-cards .year-ranking li { grid-template-columns: 24px minmax(0, 1fr) max-content; gap: 12px; padding: 15px 0; align-items: baseline; line-height: 1.6; }
+#y-cards .year-ranking li { grid-template-columns: 20px minmax(0, 1fr) max-content; gap: 10px; padding: 8px 0; align-items: baseline; }
 #y-cards .year-ranking li:last-child { padding-bottom: 0; }
 #y-cards .year-ranking li span { min-width: 0; overflow: visible; white-space: normal; text-overflow: clip; overflow-wrap: anywhere; }
 #y-cards .year-ranking li b { color: var(--amber-ink); white-space: nowrap; }
 #y-cards .year-ranking li::before { font-size: 12px; }
-.year-chart-scroll { overflow-x: auto; min-width: 0; padding: 6px 3px; }
+.year-chart-scroll { overflow-x: auto; min-width: 0; padding: 4px 2px; }
 .year-chart.months { min-width: 480px; }
 .year-chart.days { min-width: 480px; }
-#y-cards .bars { height: 180px; gap: 12px; margin-top: 0; }
-#y-cards .bars.days { gap: 4px; }
-#y-cards .bars .b i { border-radius: 5px 5px 0 0; }
-#y-cards .bar-labels { margin-top: 12px; gap: 12px; }
-#y-cards .bar-labels.days { gap: 4px; }
+#y-cards .bars { height: 130px; gap: 6px; margin-top: 0; }
+#y-cards .bars.days { gap: 2px; }
+#y-cards .bar-labels { margin-top: 6px; gap: 6px; }
+#y-cards .bar-labels.days { gap: 2px; }
 #y-cards .bars button.b:focus-visible { outline-offset: 3px; border-radius: 4px; }
 #y-month .list { table-layout: fixed; }
 #y-month .list td { overflow-wrap: anywhere; }
@@ -420,12 +426,56 @@ footer { padding-top: 22px; font-size: 11px; line-height: 1.8; }
   .year-rankings, .year-details { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 600px) {
-  #y-cards { gap: 28px; }
-  #y-cards .card { padding: 18px; }
+  #y-cards { gap: 20px; }
+  #y-cards .card { padding: 16px; }
   #y-cards .year-ranking li { gap: 8px; grid-template-columns: 18px minmax(0, 1fr) max-content; }
   #y-month .list td { padding: 10px 6px; }
   #y-month .list td:first-child { width: 65px; font-size: 11px; }
   #y-month .list td:last-child { width: 48px; }
+}
+
+/* Annual recap, using the comparison report's colour accents. */
+#panel-years { padding: 0; border: 0; background: transparent; box-shadow: none; }
+.year-hero { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 32px; border: 1px solid var(--line); border-radius: 18px; background: linear-gradient(120deg, var(--amber-soft), var(--surface) 75%); overflow: hidden; }
+.year-eyebrow { color: var(--amber-ink); text-transform: uppercase; letter-spacing: .15em; font-size: 11px; font-weight: 700; }
+#y-cards .year-hero h2 { margin: 10px 0; font-family: var(--display); font-size: clamp(28px, 4vw, 46px); text-transform: none; letter-spacing: -.03em; color: var(--ink); line-height: 1.2; }
+.year-hero p { margin: 0 0 16px; }
+.year-scope { color: var(--muted); font-size: 12px; }
+.year-stamp { font-family: var(--display); font-size: clamp(50px, 8vw, 110px); font-weight: 700; color: var(--amber-ink); opacity: .22; transform: rotate(-8deg); }
+.year-section > h2 { font-size: 20px; text-transform: none; letter-spacing: -.025em; }
+#y-cards .card { border-radius: 14px; padding: 24px; }
+.year-metrics > .card { border-top: 3px solid var(--amber); }
+.year-metrics > .card:nth-child(2) { background: var(--new-soft); border-top-color: var(--new); }
+.year-metrics > .card:nth-child(3) { border-top-color: #8BACE0; background: linear-gradient(135deg, #8bace01c, var(--surface)); }
+#y-cards .year-metrics .value { font-size: 46px; }
+.year-highlights { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.year-spotlight { background: linear-gradient(145deg, var(--amber-soft), var(--surface)); }
+#y-cards .bars .b i { background: linear-gradient(0deg, var(--amber), var(--amber-ink)); border-radius: 5px 5px 0 0; }
+#y-cards .bars .b.peak i { background: var(--new); }
+.year-rating-dist { display: grid; gap: 14px; margin-top: 12px; }
+.year-rating-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) 40px; align-items: center; gap: 14px; font-variant-numeric: tabular-nums; }
+.year-rating-row b { text-align: right; }
+.year-rating-track { height: 12px; border-radius: 5px; background: var(--track); overflow: hidden; }
+.year-rating-track i { display: block; height: 100%; background: var(--amber); border-radius: inherit; }
+.year-rating-detail { min-width: 0; }
+.year-rating-detail > summary { grid-template-columns: 64px minmax(0, 1fr) 40px 12px; padding: 10px 8px; border-radius: 6px; cursor: pointer; list-style: none; }
+.year-rating-detail > summary::-webkit-details-marker { display: none; }
+.year-rating-detail > .year-ranking-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) max-content 12px; align-items: baseline; gap: 10px; overflow-wrap: anywhere; }
+.year-ranking-position { color: var(--muted); font-size: 12px; }
+.year-ranking-row > b { color: var(--amber-ink); font-variant-numeric: tabular-nums; }
+.year-rating-detail > summary:hover, .year-rating-detail[open] > summary { background: var(--amber-soft); }
+.year-rating-chevron { font-size: 22px; line-height: 1; text-align: center; }
+.year-rating-detail[open] .year-rating-chevron { transform: rotate(90deg); }
+.year-rating-beers { padding: 4px 8px 12px; }
+.year-rating-beers ol { list-style: none; padding: 0; margin: 0; }
+.year-rating-beers li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.year-rating-beers li:last-child { border-bottom: 0; }
+.year-rating-beers li > b { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--amber-ink); }
+@media (max-width: 850px) { .year-highlights { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) {
+  .year-hero { padding: 22px; }
+  .year-stamp { display: none; }
+  #y-cards .card { padding: 16px; }
 }
 
 /* Comparison report shares the annual report's spacious reading order. */
@@ -434,10 +484,33 @@ footer { padding-top: 22px; font-size: 11px; line-height: 1.8; }
 #panel-compare .cmp-title { font-size: clamp(24px, 3vw, 32px); margin-top: 8px; }
 #cmp-form { padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
 #cmp-form .search { min-width: 0; }
+.combo { position: relative; flex: 1 1 260px; min-width: 0; }
+.combo .search { width: 100%; }
+.combo-list { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 20; margin: 0; padding: 6px; list-style: none;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 32px #0000002e; max-height: 320px; overflow-y: auto; }
+.combo-list li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+.combo-name { min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
+.combo-user { color: var(--muted); white-space: nowrap; font-size: 12px; }
+.combo-list li:hover, .combo-list li[aria-selected="true"] { background: var(--amber-soft); }
+.combo-list li:hover .combo-name, .combo-list li[aria-selected="true"] .combo-name { color: var(--amber-ink); }
+.cmp-tasks { display: grid; gap: 10px; }
+.cmp-tasks:not(:has(> :not([hidden]))) { display: none; }
+.cmp-task { display: grid; gap: 10px; padding: 16px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; min-width: 0; }
+.cmp-task .row { display: flex; gap: 6px 16px; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
+.cmp-task .task-label { font-size: 14px; overflow-wrap: anywhere; }
+.cmp-task .task-eta { font-size: 13px; color: var(--amber-ink); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cmp-task .task-detail { margin: 0; font-variant-numeric: tabular-nums; }
+.cmp-task .task-detail:empty { display: none; }
+.cmp-task .progress { height: 8px; border-radius: 4px; }
+.cmp-task.countries .progress i { background: var(--new); }
+.progress.indeterminate i { width: 35% !important; animation: progress-slide 1.4s ease-in-out infinite; }
+@keyframes progress-slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+@media (prefers-reduced-motion: reduce) { .progress.indeterminate i { animation: none; width: 100% !important; opacity: .4; } }
 #cmp-out, #cmp-years { display: grid; gap: 22px; min-width: 0; }
 #cmp-years { margin-top: 18px; padding-top: 30px; border-top: 1px solid var(--line); }
 #panel-compare p:empty, #panel-compare .table-wrap:has(table:empty) { display: none; }
 #cmp-overlap { display: grid; gap: 18px; }
+.cmp-kpis-title { font-size: 16px; margin: 0 0 -10px; overflow-wrap: anywhere; }
 .cmp-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .cmp-stat { display: grid; gap: 10px; padding: 24px; border: 1px solid var(--line); border-top: 3px solid var(--amber); border-radius: 14px; background: var(--surface); overflow-wrap: anywhere; }
 .cmp-stat.shared { border-top-color: var(--new); }
@@ -465,6 +538,15 @@ footer { padding-top: 22px; font-size: 11px; line-height: 1.8; }
 #panel-compare .cmp-col li > span:last-child { flex-shrink: 0; color: var(--amber-ink); }
 #panel-compare .cmp-col a { text-decoration: none; }
 #panel-compare .cmp-col a:hover { text-decoration: underline; color: var(--amber-ink); }
+/* Utvidbare rader i sammenligningen */
+#panel-compare .cmp-col li { flex-wrap: wrap; }
+.cmp-detail { flex-basis: 100%; display: grid; gap: 8px; padding: 4px 0 6px 14px; }
+.cmp-detail h4 { margin: 6px 0 0; font-size: 13px; display: flex; justify-content: space-between; gap: 8px; }
+.cmp-detail h4 span { color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+.cmp-detail .meta { margin: 0; }
+#panel-compare .cmp-beers { margin: 0; padding: 0; list-style: none; font-size: 13px; }
+#panel-compare .cmp-beers li { padding: 6px 0; gap: 12px; line-height: 1.4; flex-wrap: nowrap; }
+#panel-compare .cmp-beers li:last-child { border-bottom: 0; }
 #cmp-year-bar { padding: 18px 0; gap: 18px; }
 #cmp-year-select { font-size: 24px; font-weight: 650; }
 #cmp-year-summary { flex: 1 1 240px; }
@@ -489,3 +571,29 @@ footer { padding-top: 22px; font-size: 11px; line-height: 1.8; }
   #panel-compare .year-cmp td, #panel-compare .year-cmp th { padding: 10px 8px; font-size: 12px; }
   #cmp-form { padding: 16px; }
 }
+
+/* ---------- Merker ---------- */
+.badge-sections { display: grid; gap: 28px; }
+.badge-section { display: grid; gap: 10px; min-width: 0; }
+.badge-section > h2 { display: flex; align-items: baseline; gap: 8px; color: var(--ink); font-size: 20px; text-transform: none; letter-spacing: -.025em; }
+.badge-count { font-size: 13px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.badge-year { margin: 6px 0 0; font-family: var(--display); font-size: 17px; }
+.badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 10px; }
+.badge-tile { display: grid; justify-items: center; align-content: start; gap: 4px; min-width: 0; padding: 14px 10px 12px;
+  text-align: center; text-decoration: none; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.badge-tile:hover { border-color: var(--amber); }
+.badge-tile.maxed { border-top: 3px solid var(--amber); }
+.badge-tile img, .badge-tile .ph { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; background: var(--track); }
+.badge-tile .name { font-size: 13px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.badge-tile .sub { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tag-retired { padding: 0 6px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--track); color: var(--muted); }
+#y-cards .badge-grid { margin-top: 4px; }
+@media (max-width: 600px) { .badge-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); } }
+
+/* ---------- Merker i sammenligningen ---------- */
+.cmp-badges { display: grid; gap: 16px; min-width: 0; margin-top: 24px; }
+.cmp-badges-out { display: grid; gap: 16px; min-width: 0; }
+.cmp-badge-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.cmp-badge-row > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.cmp-badge-row img, .cmp-badge-row .ph { width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%; object-fit: cover; background: var(--track); }
+@media (max-width: 600px) { .cmp-badges .cmp-metrics { grid-template-columns: minmax(0, 1fr); } }

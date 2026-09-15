@@ -5,13 +5,12 @@ const fs = require('node:fs');
 const { parseHTML } = require('linkedom');
 
 function setup(friends, cached = { friends: [], complete: false }, stats = undefined) {
-  const { document } = parseHTML('<form id="cmp-form"><input id="cmp-user"><button></button></form><datalist id="cmp-friends"></datalist><p id="cmp-friends-meta"></p><p id="cmp-meta"></p><div id="cmp-kind"></div>');
+  const { document, DOMParser } = parseHTML('<form id="cmp-form"><div class="combo"><input id="cmp-user"><ul id="cmp-friends" hidden></ul></div><button></button></form><p id="cmp-friends-meta"></p><p id="cmp-meta"></p><div id="cmp-kind"></div>');
   const requested = [];
   const fetches = [];
   const saved = [];
   const DFU = {
     i18n: { t: key => key, number: String },
-    html: { html: () => '', render: () => {} },
     store: {
       loadFriends: async () => cached,
       getSettings: async () => ({ staleHours: 6 }),
@@ -22,7 +21,9 @@ function setup(friends, cached = { friends: [], complete: false }, stats = undef
       fetchDirect: async name => { requested.push(name); return { data: { hasData: false } }; },
     },
   };
-  vm.runInNewContext(fs.readFileSync(require.resolve('../dashboard/compare.js'), 'utf8'), { DFU, document });
+  const context = vm.createContext({ DFU, document, DOMParser });
+  vm.runInContext(fs.readFileSync(require.resolve('../lib/html.js'), 'utf8'), context);
+  vm.runInContext(fs.readFileSync(require.resolve('../dashboard/compare.js'), 'utf8'), context);
   DFU.compare.init();
   DFU.compare.setMe({ pageOwner: 'me', stats });
   return { document, requested, fetches, saved };
@@ -72,6 +73,38 @@ test('name and selected suggestion resolve to username; duplicate names require 
     if (value === 'Per Olsen') assert.equal(document.getElementById('cmp-meta').textContent, 'compare_chooseFriend');
   }
   assert.deepEqual(requested, ['beer_anne', 'beer_anne', 'per2', 'someone_else']);
+});
+
+test('suggestions filter friends and can be picked with the keyboard', async () => {
+  const { document, requested } = setup([
+    { name: 'Anne Hansen', username: 'beer_anne' },
+    { name: 'Per Olsen', username: 'per1' },
+    { name: 'Per Olsen', username: 'per2' },
+  ]);
+  const { Event } = document.defaultView;
+  const input = document.getElementById('cmp-user');
+  const list = document.getElementById('cmp-friends');
+  const key = k => input.dispatchEvent(Object.assign(new Event('keydown', { cancelable: true }), { key: k }));
+  input.dispatchEvent(new Event('focus'));
+  await new Promise(resolve => setImmediate(resolve));
+
+  input.value = 'per';
+  input.dispatchEvent(new Event('input'));
+  assert.equal(list.hidden, false);
+  assert.deepEqual([...list.querySelectorAll('.combo-user')].map(el => el.textContent), ['@per1', '@per2']);
+  assert.equal(input.getAttribute('aria-expanded'), 'true');
+
+  key('Escape');
+  assert.equal(list.hidden, true);
+
+  key('ArrowDown');
+  key('ArrowDown');
+  assert.equal(input.getAttribute('aria-activedescendant'), 'cmp-friend-1');
+  key('Enter');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(input.value, 'Per Olsen (@per2)');
+  assert.equal(list.hidden, true);
+  assert.deepEqual(requested, ['per2']);
 });
 
 function friendPage(start, count) {
@@ -144,4 +177,34 @@ for (const [name, page, expected] of [
   assert.equal(result.partial, true);
   assert.equal(result.friends.length, 25);
   assert.equal(result.error, expected);
+});
+
+function compareModule() {
+  const DFU = { i18n: { t: key => key, number: String }, html: { html: () => '', render: () => {} }, store: {}, fetch: {} };
+  vm.runInNewContext(fs.readFileSync(require.resolve('../dashboard/compare.js'), 'utf8'), { DFU, document: parseHTML('<div></div>').document });
+  return DFU.compare;
+}
+
+test('beersFor finds beers per brewery by name or id, per style and per country', () => {
+  const { beersFor } = compareModule();
+  const beers = [
+    { id: 1, name: 'A', brewery: 'Bräu Haus', breweryUrl: '/w/brau-haus/10', style: 'IPA - American', first: '2024-01-01' },
+    { id: 2, name: 'B', brewery: 'Brau Haus', breweryUrl: null, style: 'Stout', first: '2025-01-01' },
+    { id: 3, name: 'C', brewery: 'Renamed', breweryUrl: '/w/renamed/10', style: 'IPA - American', first: '2023-01-01' },
+    { id: 4, name: 'D', brewery: 'Other', breweryUrl: '/w/other/11', style: 'Stout', first: '2022-01-01' },
+  ];
+  assert.deepEqual(beersFor('breweries', { id: '10', name: 'BRAU HAUS' }, beers).map(b => b.id), [2, 1, 3]);
+  assert.deepEqual(beersFor('styles', { id: 's', name: 'Stout' }, beers).map(b => b.id), [2, 4]);
+  assert.deepEqual(beersFor('countries', { id: 'no', name: 'Norway' }, beers, { 1: 'Norway', 4: 'Norway', 2: 'Sweden' }).map(b => b.id), [1, 4]);
+  assert.deepEqual(beersFor('countries', { id: 'no', name: 'Norway' }, beers).map(b => b.id), []);
+});
+
+test('beers under a shared brewery split into shared, only mine and only theirs', () => {
+  const { beersFor } = compareModule();
+  const years = require('../lib/years.js');
+  const item = { id: '10', name: 'Brew' };
+  const mine = [{ id: 1, name: 'A', brewery: 'Brew' }, { id: 2, name: 'B', brewery: 'Brew' }, { id: 9, name: 'X', brewery: 'Else' }];
+  const theirs = [{ id: 2, name: 'B', brewery: 'Brew' }, { id: 3, name: 'C', brewery: 'Brew' }];
+  const s = years.compareYear(beersFor('breweries', item, mine), beersFor('breweries', item, theirs));
+  assert.deepEqual([s.both, s.onlyMine, s.onlyTheirs].map(l => l.map(b => b.id)), [[2], [1], [3]]);
 });

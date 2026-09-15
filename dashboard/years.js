@@ -16,6 +16,10 @@
     syncing: false,
     controller: null,
     friend: { name: null, history: null, built: null },
+    friendSyncing: false,
+    friendController: null,
+    // Henting av innsjekkingsdatoer, for deg og for vennen.
+    checkins: { me: { name: null, running: false, error: null, controller: null }, friend: { name: null, running: false, error: null, controller: null } },
   };
 
   const rate = v => (v == null ? '–' : v.toLocaleString(i18n.locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
@@ -73,6 +77,56 @@
     <ol>${items.map(x => html`<li><span>${name(x)}</span><b>${value(x)}</b></li>`)}</ol></div>`;
 
   /* ---------- Årskort ---------- */
+  function rankingDrilldown(y, kind) {
+    const styles = kind === 'styles';
+    const items = styles ? y.topStyles : y.topBreweries;
+    return html`<div class="card year-ranking-drilldown" data-ranking="${kind}">
+      <span class="label">${t(styles ? 'card_topStyles' : 'card_topBreweries')}</span>
+      <span class="note">${t('year_rankingHint')}</span>
+      <div>${items.map((item, index) => {
+        const beers = (S.built.byYear.get(y.year) ?? [])
+          .filter(b => (styles ? b.style : b.breweryUrl || b.brewery || null) === item.key)
+          .sort((a, b) => (b.ratingYou ?? -1) - (a.ratingYou ?? -1) || a.name.localeCompare(b.name));
+        return html`<details class="year-rating-detail"><summary class="year-ranking-row">
+          <span class="year-ranking-position">${index + 1}</span><span>${item.name}</span><b>${num(item.count)}</b>
+          <span class="year-rating-chevron" aria-hidden="true">›</span></summary>
+          <div class="year-rating-beers"><ol>${beers.map(b => html`<li>
+            <div>${beerLink(b)}<span class="sub-line">${b.brewery} · ${b.style}</span></div>
+            <b>${rate(b.ratingYou)}${b.ratingYou == null ? '' : ' ★'}</b></li>`)}</ol></div>
+        </details>`;
+      })}</div></div>`;
+  }
+
+  function ratingDrilldown(y, count, bucket) {
+    const beers = (S.built.byYear.get(y.year) ?? [])
+      .filter(b => b.ratingYou != null && b.ratingYou >= bucket &&
+        (bucket === 4 ? b.ratingYou <= 5 : b.ratingYou < bucket + 1))
+      .sort((a, b) => b.ratingYou - a.ratingYou || a.name.localeCompare(b.name));
+    return html`<details class="year-rating-detail"><summary class="year-rating-row">
+      <span>${bucket}–${bucket + 1} ★</span><span class="year-rating-track" aria-hidden="true"><i style="width:${count / Math.max(1, ...y.ratingBuckets) * 100}%"></i></span><b>${num(count)}</b>
+      <span class="year-rating-chevron" aria-hidden="true">›</span></summary>
+      <div class="year-rating-beers">${beers.length ? html`<ol>${beers.map(b => html`<li>
+        <div>${beerLink(b)}<span class="sub-line">${b.brewery} · ${b.style}</span></div>
+        <b>${rate(b.ratingYou)} ★</b></li>`)}</ol>` : html`<p class="note">${t('year_ratingEmpty')}</p>`}</div>
+    </details>`;
+  }
+
+  // Spesialmerker og maks nivå nådd i året, fra merkefanen. Vises bare når det finnes noen.
+  function badgeSection(year) {
+    const view = root.DFU.badgesView;
+    if (!view || !root.DFU.badges) return '';
+    const { maxed, special } = root.DFU.badges.inYear(view.badges(), year, view.showOpts());
+    if (!maxed.length && !special.length) return '';
+    return html`<section class="year-section" aria-labelledby="year_badges">
+      <h2 id="year_badges">${t('year_badges')}</h2>
+      <div class="card wide"><span class="note">${[
+        special.length ? t(special.length === 1 ? 'year_badgesSpecialOne' : 'year_badgesSpecial', num(special.length)) : '',
+        maxed.length ? t('year_badgesMaxed', num(maxed.length)) : '',
+      ].filter(Boolean).join(' · ')}</span>
+        <div class="badge-grid">${maxed.map(b => view.tile(b, { maxed: true }))}${special.map(b => view.tile(b))}</div></div>
+    </section>`;
+  }
+
   function renderYear() {
     const y = S.built?.years.find(x => x.year === S.year);
     if (!y) { render($('y-cards'), ''); return; }
@@ -92,8 +146,8 @@
         <span class="note">${y.topRated[0] ? `${y.topRated[0].brewery} · ${rate(y.topRated[0].ratingYou)}` : '–'}</span></div>`,
       listCard(t('card_top5'), y.topRated, b => rate(b.ratingYou), '', beerLink),
       listCard(t('card_lowest'), y.lowestRated, b => rate(b.ratingYou), '', beerLink),
-      listCard(t('card_topStyles'), y.topStyles, x => num(x.count)),
-      listCard(t('card_topBreweries'), y.topBreweries, x => num(x.count)),
+      rankingDrilldown(y, 'styles'),
+      rankingDrilldown(y, 'breweries'),
       html`<div class="card"><span class="label">${t('card_firstLast')}</span>
         <span class="note">${t('card_first', '')} ${beerLink(y.firstBeer)} · ${y.firstBeer ? i18n.date(y.firstBeer.first) : ''}</span>
         <span class="note">${t('card_last', '')} ${beerLink(y.lastBeer)} · ${y.lastBeer ? i18n.date(y.lastBeer.first) : ''}</span></div>`,
@@ -106,8 +160,26 @@
     const section = (key, content, cls) => html`<section class="year-section" aria-labelledby="${key}">
       <h2 id="${key}">${t(key)}</h2><div class="${cls}">${content}</div></section>`;
     render($('y-cards'), [
+      html`<header class="year-hero"><div><span class="year-eyebrow">${t('year_recap')}</span>
+        <h2>${t('year_headline', y.year)}</h2><p>${t('year_intro')}</p>
+        <span class="year-scope">${t('years_note')}</span></div>
+        <span class="year-stamp" aria-hidden="true">${y.year}</span></header>`,
       section('year_overview', [beers, breweries, styles], 'year-metrics'),
+      section('year_discoveries', [
+        html`<div class="card year-spotlight"><span class="label">${t('year_signature')}</span>
+          <span class="value small">${y.topStyles[0]?.name ?? '–'}</span>
+          <span class="note">${y.topStyles[0] ? t('year_styleShare', num(y.topStyles[0].count), num(Math.round(y.topStyles[0].count / y.beers * 100))) : '–'}</span></div>`,
+        html`<div class="card"><span class="label">${t('year_discoveryDays')}</span><span class="value">${num(y.discoveryDays)}</span>
+          <span class="note">${t('year_activeMonths', num(y.activeMonths))}</span></div>`,
+        html`<div class="card"><span class="label">${t('year_peakMonth')}</span>
+          <span class="value small">${new Intl.DateTimeFormat(i18n.locale(), { month: 'long' }).format(new Date(y.year, y.busiestMonth, 1))}</span>
+          <span class="note">${t('year_peakCount', num(y.months[y.busiestMonth]))}</span></div>`,
+      ], 'year-highlights'),
       section('year_activity', [months, month, weekdays], 'year-activity'),
+      section('year_ratings', html`<div class="card"><span class="note">${t('year_ratingsNote', num(y.ratedCount), num(y.beers))}</span>
+        <span class="note">${t('year_ratingHint')}</span>
+        <div class="year-rating-dist">${y.ratingBuckets.map((count, i) => ratingDrilldown(y, count, i))}</div>${y.ratedCount ? '' : html`<span class="note">${t('year_noRatings')}</span>`}</div>`, 'year-activity'),
+      badgeSection(y.year),
       section('year_favorites', [top, lowest, topStyles, topBreweries], 'year-rankings'),
       section('year_details', [favorite, firstLast, rating, abv], 'year-details'),
     ]);
@@ -131,6 +203,63 @@
     root.DFU.dashboardTrend?.();
     document.dispatchEvent(new CustomEvent('dfu:history'));
     if (!S.built.years.length && S.history?.beers?.length) $('y-summary').textContent = t('years_none');
+    if (S.friend.name) void syncCheckinDates('me');
+  }
+
+  // Henter datoene for innsjekkinger historikken ikke plasserer i et år, og lagrer dem på ølene.
+  async function syncCheckinDates(who) {
+    const friend = who === 'friend';
+    const job = S.checkins[who];
+    const name = friend ? S.friend.name : S.user;
+    const record = () => (friend ? S.friend.history : S.history);
+    if (!name || (friend ? S.friendSyncing : S.syncing) || (job.running && job.name === name)) return;
+    const wanted = (record()?.beers ?? []).filter(yearsLib.needsCheckinDates);
+    if (!wanted.length) return;
+    job.controller?.abort();
+    const controller = new AbortController();
+    Object.assign(job, { name, running: true, error: null, controller });
+    const current = () => job.controller === controller && (friend ? S.friend.name : S.user) === name;
+    const task = $(friend ? 'cmp-task-checkins-friend' : 'cmp-task-checkins-me');
+    const eta = newEta();
+    const show = p => {
+      const { fraction, remainingMs } = eta.update(p.index, wanted.length);
+      root.DFU.progress.showTask(task, {
+        label: t('progress_checkinsLabel', name),
+        detail: t('progress_checkinsDetail', num(Math.min(p.index + 1, wanted.length)), num(wanted.length), num(p.pages)),
+        fraction,
+        eta: root.DFU.progress.formatEta(remainingMs, t),
+      });
+    };
+    // Legger datoene inn i den lagrede historikken uten å endre når den sist ble hentet.
+    const save = async dates => {
+      const latest = record();
+      if (!current() || !latest?.beers?.length) return;
+      const beers = latest.beers.map(b => (dates[b.id] ? { ...b, checkinDates: dates[b.id] } : b));
+      const saved = await store.saveHistory(name, { beers, complete: latest.complete, syncedAt: latest.syncedAt });
+      if (!current()) return;
+      if (friend) { S.friend.history = saved; S.friend.built = yearsLib.buildYears(saved.beers); } else { S.history = saved; S.built = yearsLib.buildYears(saved.beers); }
+      renderFriendCompare();
+    };
+    show({ index: 0, pages: 0 });
+    renderFriendCompare();
+    try {
+      const res = await history.syncCheckins(name, {
+        beers: wanted, self: !friend, signal: controller.signal,
+        onProgress: p => { if (current()) show(p); },
+        onCheckpoint: ({ dates }) => save(dates),
+      });
+      await save(res.dates);
+      if (current() && res.stopped !== 'aborted' && !res.complete) job.error = t('cmpYears_checkinsIncomplete');
+    } catch (err) {
+      if (current()) job.error = err.message;
+    } finally {
+      if (job.controller === controller) {
+        job.running = false;
+        job.controller = null;
+        root.DFU.progress.hideTask(task);
+        renderFriendCompare();
+      }
+    }
   }
 
   /* ---------- Henting ---------- */
@@ -151,8 +280,13 @@
     }
   }
 
+  const pageCount = expected => (expected ? Math.ceil(expected / history.PAGE_SIZE) : null);
+  const newEta = () => root.DFU.progress.createEta({ fallbackMs: history.DELAY_MS + 400 });
+
   function progress(p) {
-    $('y-sync-text').textContent = t('years_syncing', num(p.pages), num(p.fetched));
+    const { remainingMs } = S.eta.update(p.pages, pageCount(S.expected));
+    const left = root.DFU.progress.formatEta(remainingMs, t);
+    $('y-sync-text').textContent = [t('years_syncing', num(p.pages), num(p.fetched)), left].filter(Boolean).join(' · ');
     if (S.expected) $('y-progress').firstElementChild.style.width = `${Math.min(100, Math.round(p.fetched / S.expected * 100))}%`;
   }
 
@@ -160,6 +294,7 @@
     if (S.syncing || !S.user) return;
     S.syncing = true;
     S.controller = new AbortController();
+    S.eta = newEta();
     renderSync();
     try {
       const res = await history.sync(S.user, {
@@ -204,20 +339,19 @@
     box.hidden = !name;
     if (!name) return;
 
-    $('cmp-year-btn').textContent = t('cmpYears_btn', name);
-    // Knappen blir stående, så historikken kan hentes på nytt når noe er oppdatert.
-    $('cmp-year-btn').hidden = S.syncing;
     if (!S.friend.built) {
-      $('cmp-year-meta').textContent = t('cmpYears_hint', name);
+      if (S.friendSyncing) $('cmp-year-meta').textContent ||= t('cmpYears_loading', name);
       $('cmp-year-bar').hidden = true;
       $('cmp-all-title').hidden = true;
       if ($('cmp-year-chart')) render($('cmp-year-chart'), '');
       for (const id of ['cmp-year-table', 'cmp-year-cols', 'cmp-all-years']) render($(id), '');
+      $('cmp-year-note').textContent = '';
       return;
     }
 
     const years = comparableYears();
     if (!years.includes(S.cmpYear)) S.cmpYear = years[0] ?? null;
+    // Fremdriften vises i oppgaveraden øverst, så meldingsfeltet kan tømmes.
     $('cmp-year-meta').textContent = '';
     $('cmp-year-bar').hidden = false;
     $('cmp-all-title').hidden = false;
@@ -241,7 +375,20 @@
       </div>`)}</div></section>`);
     const months = new Intl.DateTimeFormat(i18n.locale(), { month: 'long' });
     const monthName = y => (y && y.beers ? months.format(new Date(2025, y.busiestMonth, 1)) : null);
+    // Innsjekkinger og unike øl vises først når alle datoene for året er kjent.
+    const yearCount = (built, key, year = S.cmpYear) => built?.[key]?.get(year) ?? { count: 0, pending: false };
+    const jobs = [S.checkins.me, S.checkins.friend];
+    const loading = jobs.some(j => j.running) || S.friendSyncing;
+    const countCell = c => (c.pending ? (loading ? '…' : '–') : num(c.count));
+    const known = c => (c.pending ? null : c.count);
+    const countRow = (label, key) => {
+      const [a, b] = [yearCount(S.built, key), yearCount(S.friend.built, key)];
+      return [label, known(a), known(b), 'high', [countCell(a), countCell(b)]];
+    };
+    const pending = ['checkins', 'unique'].some(key => yearCount(S.built, key).pending || yearCount(S.friend.built, key).pending);
     const rows = [
+      countRow(t('cmpYears_row_checkins'), 'checkins'),
+      countRow(t('cmpYears_row_unique'), 'unique'),
       [t('cmpYears_row_beers'), mine?.beers ?? 0, theirs?.beers ?? 0, 'high'],
       [t('cmpYears_row_breweries'), mine?.breweries ?? 0, theirs?.breweries ?? 0, 'high'],
       [t('cmpYears_row_styles'), mine?.styles ?? 0, theirs?.styles ?? 0, 'high'],
@@ -255,9 +402,13 @@
     ];
     const win = (a, b, mode) => (mode === 'high' && typeof a === 'number' && typeof b === 'number' && a > b ? 'win' : '');
     render($('cmp-year-table'), html`<thead><tr><th>${S.cmpYear}</th><th>${t('compare_you')}</th><th>${name}</th></tr></thead>
-      <tbody>${rows.map(([label, a, b, mode]) => html`<tr><td>${label}</td>
-        <td class="${win(a, b, mode)}">${cell(a)}</td><td class="${win(b, a, mode)}">${cell(b)}</td></tr>`)}
+      <tbody>${rows.map(([label, a, b, mode, shown = [cell(a), cell(b)]]) => html`<tr><td>${label}</td>
+        <td class="${win(a, b, mode)}">${shown[0]}</td><td class="${win(b, a, mode)}">${shown[1]}</td></tr>`)}
         <tr><td>${t('cmpYears_row_shared')}</td><td colspan="2">${num(split.both.length)}</td></tr></tbody>`);
+    const errors = jobs.map(j => j.error).filter(Boolean);
+    $('cmp-year-note').textContent = !pending ? ''
+      : loading ? t('cmpYears_checkinsLoading')
+      : errors.length ? t('years_error', errors.join(' · ')) : t('cmpYears_checkinsIncomplete');
 
     render($('cmp-year-cols'), [
       beerList(t('compare_both'), split.both, b => rate(b.ratingYou)),
@@ -265,35 +416,67 @@
       beerList(t('compare_onlyThem', name), split.onlyTheirs, b => rate(b.ratingYou)),
     ]);
 
-    render($('cmp-all-years'), html`<thead><tr><th>${t('cmpYears_year')}</th><th>${t('compare_you')}</th><th>${name}</th><th>${t('cmpYears_row_shared')}</th></tr></thead>
+    const pair = (a, b, shown = [num(a), num(b)]) => html`<td class="${win(a, b, 'high')}">${shown[0]}</td><td class="${win(b, a, 'high')}">${shown[1]}</td>`;
+    render($('cmp-all-years'), html`<thead>
+        <tr><th rowspan="2">${t('cmpYears_year')}</th><th colspan="2">${t('cmpYears_col_checkins')}</th><th colspan="2">${t('cmpYears_col_new')}</th><th rowspan="2">${t('cmpYears_row_shared')}</th></tr>
+        <tr><th>${t('compare_you')}</th><th>${name}</th><th>${t('compare_you')}</th><th>${name}</th></tr></thead>
       <tbody>${years.map(y => {
         const a = S.built?.years.find(x => x.year === y);
         const b = S.friend.built.years.find(x => x.year === y);
+        const [ca, cb] = [yearCount(S.built, 'checkins', y), yearCount(S.friend.built, 'checkins', y)];
         const both = yearsLib.compareYear(S.built?.byYear.get(y) ?? [], S.friend.built.byYear.get(y) ?? []).both.length;
-        return html`<tr><td>${y}</td><td class="${win(a?.beers ?? 0, b?.beers ?? 0, 'high')}">${num(a?.beers ?? 0)}</td>
-          <td class="${win(b?.beers ?? 0, a?.beers ?? 0, 'high')}">${num(b?.beers ?? 0)}</td><td>${num(both)}</td></tr>`;
+        return html`<tr><td>${y}</td>${pair(known(ca), known(cb), [countCell(ca), countCell(cb)])}
+          ${pair(a?.beers ?? 0, b?.beers ?? 0)}<td>${num(both)}</td></tr>`;
       })}</tbody>`);
   }
 
-  async function syncFriend() {
-    const name = S.friend.name;
-    if (!name || S.syncing) return;
-    S.syncing = true;
-    $('cmp-year-btn').hidden = true;
+  // Henter vennens historikk. Egen henting bruker S.syncing, så de to blokkerer ikke hverandre.
+  async function syncFriend(name, known, expected) {
+    const controller = new AbortController();
+    S.friendController = controller;
+    S.friendSyncing = true;
+    const current = () => S.friend.name === name && S.friendController === controller;
+    const task = $('cmp-task-history');
+    const eta = newEta();
+    const totalPages = pageCount(expected);
+    const show = p => {
+      const { fraction, remainingMs } = eta.update(p.pages, totalPages);
+      root.DFU.progress.showTask(task, {
+        label: t('cmpYears_loading', name),
+        detail: totalPages
+          ? t('progress_historyDetail', num(Math.min(p.pages, totalPages)), num(totalPages), num(p.fetched))
+          : t('years_syncing', num(p.pages), num(p.fetched)),
+        fraction: expected ? Math.min(1, p.fetched / expected) : fraction,
+        eta: root.DFU.progress.formatEta(remainingMs, t),
+      });
+    };
+    $('cmp-year-meta').textContent = '';
+    show({ pages: 0, fetched: 0 });
+    renderFriendCompare();
     try {
-      const known = (await store.loadHistory(name)).beers;
       const res = await history.sync(name, {
         // Alltid full henting: da erstattes også eldre rader som manglet vennens rangering.
-        known, full: true, expected: null,
-        onProgress: p => { $('cmp-year-meta').textContent = t('years_syncing', num(p.pages), num(p.fetched)); },
+        known, full: true, expected, signal: controller.signal,
+        onProgress: p => { if (current() && !p.done) show(p); },
       });
-      S.friend.history = await store.saveHistory(name, { beers: res.beers, complete: res.complete });
+      // Avbrutt betyr at en annen venn er valgt. Da lagres ikke den halve hentingen.
+      if (res.stopped === 'aborted') return;
+      const saved = await store.saveHistory(name, { beers: res.beers, complete: res.complete });
+      if (!current()) return;
+      S.friend.history = saved;
       S.friend.built = yearsLib.buildYears(res.beers);
+      $('cmp-year-meta').textContent = '';
     } catch (err) {
-      $('cmp-year-meta').textContent = t('years_error', err.message);
+      if (current()) $('cmp-year-meta').textContent = t('years_error', err.message);
     } finally {
-      S.syncing = false;
-      renderFriendCompare();
+      if (S.friendController === controller) {
+        root.DFU.progress.hideTask(task);
+        S.friendSyncing = false;
+        S.friendController = null;
+        renderFriendCompare();
+        document.dispatchEvent(new CustomEvent('dfu:friend-history'));
+        void syncCheckinDates('friend');
+      }
     }
   }
 
@@ -301,7 +484,7 @@
   function init() {
     $('y-sync-stop').addEventListener('click', () => S.controller?.abort());
     $('y-year').addEventListener('change', e => { S.year = Number(e.target.value); renderYear(); renderFriendCompare(); });
-    $('cmp-year-btn')?.addEventListener('click', syncFriend);
+    document.addEventListener('dfu:badges', () => renderYear());
     renderSync();
     void bootstrap();
   }
@@ -325,15 +508,36 @@
     build();
   }
 
-  // Kalles av sammenligningsfanen når en venn er hentet.
-  async function setFriend(name) {
+  // Kalles av sammenligningsfanen når en venn er hentet. Historikken hentes automatisk
+  // når den mangler, er ufullstendig, er gammel eller vennen har flere unike øl enn lagret.
+  // force (Oppdater-knappen) henter historikken selv om den er ny.
+  async function setFriend(name, expected = null, { force = false } = {}) {
+    if (S.friend.name !== name) {
+      S.friendController?.abort();
+      S.friendController = null;
+      S.friendSyncing = false;
+      root.DFU.progress.hideTask($('cmp-task-history'));
+      const job = S.checkins.friend;
+      job.controller?.abort();
+      Object.assign(job, { name: null, running: false, error: null, controller: null });
+      root.DFU.progress.hideTask($('cmp-task-checkins-friend'));
+    }
     S.friend = { name, history: null, built: null };
-    const stored = await store.loadHistory(name);
+    if (!S.friendSyncing) $('cmp-year-meta').textContent = '';
+    const [stored, settings] = await Promise.all([store.loadHistory(name), store.getSettings()]);
+    if (S.friend.name !== name) return;
     if (stored.beers.length) {
       S.friend.history = stored;
       S.friend.built = yearsLib.buildYears(stored.beers);
     }
     renderFriendCompare();
+    document.dispatchEvent(new CustomEvent('dfu:friend-history'));
+    const fresh = !force && stored.beers.length > 0 && stored.complete && stored.syncedAt != null &&
+      Date.now() - stored.syncedAt < settings.staleHours * 3600000 &&
+      (expected == null || expected <= stored.count);
+    void syncCheckinDates('me');
+    if (!fresh && !S.friendSyncing) void syncFriend(name, stored.beers, expected);
+    else void syncCheckinDates('friend');
   }
 
   root.DFU = root.DFU || {};

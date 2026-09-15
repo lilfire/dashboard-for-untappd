@@ -9,6 +9,7 @@ Nettleserutvidelse for Firefox og Chrome som viser ditt eget Untappd-dashbord, h
 - **Nøkkeltall:** innsjekkinger, unike øl, bryggerier, land, stiler, merker og venner
 - **Bryggerier:** søk, filter på antall øl og sortering, med lenke til bryggerisiden på Untappd
 - **Land og stiler:** rangert, med stiler gruppert i familier
+- **Merker:** et troféskap med merkene du har tatt til maks nivå, og spesialmerker (eventer, høytider, kampanjer) gruppert etter år
 - **Siste øl:** de 25 nyeste, med din rangering mot den globale
 - **Utvikling:** kurve over unike øl, bryggerier, land og stiler over tid
 - **År:** årsoppsummering for hvert år, i stil med Recappd
@@ -31,8 +32,21 @@ Under **Sammenlign** kan du hente en venns historikk på samme måte og se året
 dere begge har hatt det året.
 
 Tallene er øl du smakte **for første gang** det året. Untappds egen Recappd teller alle unike øl du sjekket
-inn i året, også gjengangere, så tallene vil avvike noe. Steder, byer, merker og gjentatte innsjekkinger
-finnes ikke i ølhistorikken, og er derfor ikke med.
+inn i året, også gjengangere, så tallene vil avvike noe. Steder, byer og gjentatte innsjekkinger
+finnes ikke i ølhistorikken, og er derfor ikke med. Årets spesialmerker og merker tatt til maks nivå vises
+når merkene er hentet under **Merker**.
+
+## Merker
+
+Fanen **Merker** viser bare merkene som er verdt å vise frem: merker tatt til **maks nivå** (ingen flere nivåer
+å låse opp) og **spesialmerker** fra Untappds egen kategori. Merker på et mellomnivå vises ikke. Første henting
+leser hele merkelisten, 52 merker per side med pause mellom hver. Senere hentes den bare når merketallet på
+profilen har endret seg, eller når det har gått en uke. Da hentes bare det nye. Merkebildene lastes fra
+`assets.untappd.com`.
+
+Under **Sammenlign** hentes vennens merker automatisk, og du ser maks nivå og spesialmerker felles, bare hos deg
+og bare hos vennen, med hvem som tok merket først. Untappd viser ikke om en venn kan gå videre på et merke. Hos
+vennen regnes derfor nivå 100 som maks, i tillegg til merker der du selv er på maks.
 
 ## Installer
 

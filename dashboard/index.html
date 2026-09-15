@@ -35,6 +35,7 @@
       <button type="button" role="tab" data-tab="breweries" data-i18n="tab_breweries"></button>
       <button type="button" role="tab" data-tab="countries" data-i18n="tab_countries"></button>
       <button type="button" role="tab" data-tab="styles" data-i18n="tab_styles"></button>
+      <button type="button" role="tab" data-tab="badges" data-i18n="tab_badges"></button>
       <button type="button" role="tab" data-tab="recent" data-i18n="tab_recent"></button>
       <button type="button" role="tab" data-tab="trend" data-i18n="tab_trend"></button>
       <button type="button" role="tab" data-tab="years" data-i18n="tab_years"></button>
@@ -42,11 +43,6 @@
     </nav>
 
     <section class="panel" id="panel-breweries" role="tabpanel">
-      <div class="dist-head">
-        <h2 data-i18n="dist_title"></h2>
-        <p data-i18n="dist_hint"></p>
-      </div>
-      <div class="dist" id="dist"></div>
       <div class="controls">
         <input class="search" id="b-q" type="search" autocomplete="off" data-i18n-placeholder="search_breweries" data-i18n-aria-label="search_breweries">
         <select id="b-sort" data-i18n-aria-label="sort_countDesc">
@@ -55,8 +51,15 @@
           <option value="name-asc" data-i18n="sort_nameAsc"></option>
           <option value="name-desc" data-i18n="sort_nameDesc"></option>
         </select>
-        <button id="b-reset" class="btn" type="button" hidden data-i18n="reset"></button>
       </div>
+      <details class="dist-box">
+        <summary class="dist-head">
+          <h2 data-i18n="dist_title"></h2>
+          <span class="dist-active" id="b-dist-active"></span>
+        </summary>
+        <p class="dist-hint" data-i18n="dist_hint"></p>
+        <div class="dist" id="b-dist"></div>
+      </details>
       <p class="meta" id="b-meta" aria-live="polite"></p>
       <div class="table-wrap">
         <table class="list">
@@ -78,7 +81,21 @@
       </div>
       <div class="controls">
         <input class="search" id="c-q" type="search" autocomplete="off" data-i18n-placeholder="search_countries" data-i18n-aria-label="search_countries">
+        <select id="c-sort" data-i18n-aria-label="sort_countDesc">
+          <option value="count-desc" data-i18n="sort_countDesc"></option>
+          <option value="count-asc" data-i18n="sort_countAsc"></option>
+          <option value="name-asc" data-i18n="sort_nameAsc"></option>
+          <option value="name-desc" data-i18n="sort_nameDesc"></option>
+        </select>
       </div>
+      <details class="dist-box">
+        <summary class="dist-head">
+          <h2 data-i18n="dist_title"></h2>
+          <span class="dist-active" id="c-dist-active"></span>
+        </summary>
+        <p class="dist-hint" data-i18n="dist_hint"></p>
+        <div class="dist" id="c-dist"></div>
+      </details>
       <p class="meta" id="c-meta"></p>
       <div class="table-wrap">
         <table class="list">
@@ -91,9 +108,36 @@
     <section class="panel" id="panel-styles" role="tabpanel" hidden>
       <div class="controls">
         <input class="search" id="s-q" type="search" autocomplete="off" data-i18n-placeholder="search_styles" data-i18n-aria-label="search_styles">
+        <select id="s-sort" data-i18n-aria-label="sort_countDesc">
+          <option value="count-desc" data-i18n="sort_countDesc"></option>
+          <option value="count-asc" data-i18n="sort_countAsc"></option>
+          <option value="name-asc" data-i18n="sort_nameAsc"></option>
+          <option value="name-desc" data-i18n="sort_nameDesc"></option>
+        </select>
       </div>
+      <details class="dist-box">
+        <summary class="dist-head">
+          <h2 data-i18n="dist_title"></h2>
+          <span class="dist-active" id="s-dist-active"></span>
+        </summary>
+        <p class="dist-hint" data-i18n="dist_hint"></p>
+        <div class="dist" id="s-dist"></div>
+      </details>
       <p class="meta" id="s-meta"></p>
       <div class="families" id="s-rows"></div>
+    </section>
+
+    <section class="panel" id="panel-badges" role="tabpanel" hidden>
+      <div class="sync">
+        <div class="row">
+          <p class="meta" id="bd-sync-text"></p>
+          <span class="row">
+            <button class="btn" id="bd-sync-stop" type="button" hidden data-i18n="years_stop"></button>
+          </span>
+        </div>
+        <div class="progress" id="bd-progress" hidden><i style="width:0%"></i></div>
+      </div>
+      <div class="badge-sections" id="bd-out"></div>
     </section>
 
     <section class="panel" id="panel-recent" role="tabpanel" hidden>
@@ -120,13 +164,56 @@
     <section class="panel" id="panel-compare" role="tabpanel" hidden>
       <h2 class="cmp-title" data-i18n="compare_heading"></h2>
       <form class="controls" id="cmp-form">
-        <input class="search" id="cmp-user" type="text" list="cmp-friends" autocomplete="off" spellcheck="false" data-i18n-placeholder="compare_placeholder" data-i18n-aria-label="compare_placeholder">
-        <datalist id="cmp-friends"></datalist>
+        <div class="combo">
+          <input class="search" id="cmp-user" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="cmp-friends" autocomplete="off" spellcheck="false" data-i18n-placeholder="compare_placeholder" data-i18n-aria-label="compare_placeholder">
+          <ul class="combo-list" id="cmp-friends" role="listbox" hidden></ul>
+        </div>
         <button class="btn primary" type="submit" data-i18n="compare_run"></button>
       </form>
-      <p class="meta" id="cmp-meta" data-i18n="compare_hint"></p>
+      <p class="meta" id="cmp-meta"></p>
       <p class="meta" id="cmp-friends-meta" aria-live="polite"></p>
+      <div class="cmp-tasks" id="cmp-tasks">
+        <div class="cmp-task" id="cmp-task-history" hidden>
+          <div class="row"><strong class="task-label"></strong><span class="task-eta"></span></div>
+          <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i style="width:0%"></i></div>
+          <p class="meta task-detail"></p>
+        </div>
+        <div class="cmp-task" id="cmp-task-checkins-me" hidden>
+          <div class="row"><strong class="task-label"></strong><span class="task-eta"></span></div>
+          <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i style="width:0%"></i></div>
+          <p class="meta task-detail"></p>
+        </div>
+        <div class="cmp-task" id="cmp-task-checkins-friend" hidden>
+          <div class="row"><strong class="task-label"></strong><span class="task-eta"></span></div>
+          <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i style="width:0%"></i></div>
+          <p class="meta task-detail"></p>
+        </div>
+        <div class="cmp-task countries" id="cmp-task-countries" hidden>
+          <div class="row"><strong class="task-label"></strong><span class="task-eta"></span></div>
+          <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i style="width:0%"></i></div>
+          <p class="meta task-detail"></p>
+        </div>
+        <div class="cmp-task" id="cmp-task-badges" hidden>
+          <div class="row"><strong class="task-label"></strong><span class="task-eta"></span></div>
+          <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i style="width:0%"></i></div>
+          <p class="meta task-detail"></p>
+        </div>
+      </div>
       <div id="cmp-out" hidden>
+        <h3 class="cmp-kpis-title" id="cmp-kpis-title"></h3>
+        <section class="kpis" id="cmp-kpis"></section>
+        <section class="cmp-chart-card" id="cmp-trend">
+          <h3 data-i18n="compare_trend"></h3>
+          <div class="segmented" id="cmp-trend-metric" role="group">
+            <button type="button" data-metric="unique" data-i18n="kpi_unique"></button>
+            <button type="button" data-metric="breweries" data-i18n="kpi_breweries"></button>
+            <button type="button" data-metric="countries" data-i18n="kpi_countries"></button>
+            <button type="button" data-metric="styles" data-i18n="kpi_styles"></button>
+          </div>
+          <div class="cmp-legend" id="cmp-trend-legend"></div>
+          <div class="chart" id="cmp-trend-chart"></div>
+          <p class="meta" id="cmp-trend-note"></p>
+        </section>
         <div class="segmented" id="cmp-kind" role="group">
           <button type="button" data-kind="breweries" data-i18n="tab_breweries"></button>
           <button type="button" data-kind="countries" data-i18n="tab_countries"></button>
@@ -135,17 +222,26 @@
         <div id="cmp-overlap"></div>
         <p class="cmp-summary" id="cmp-summary"></p>
         <div class="cmp-cols" id="cmp-cols"></div>
+        <section class="cmp-badges" id="cmp-badges" aria-labelledby="cmp-badges-title" hidden>
+          <h2 id="cmp-badges-title" data-i18n="compare_badges"></h2>
+          <div class="segmented" id="cmp-badge-kind" role="group">
+            <button type="button" data-kind="maxed" data-i18n="compare_badgesMaxed"></button>
+            <button type="button" data-kind="special" data-i18n="compare_badgesSpecial"></button>
+          </div>
+          <div class="cmp-badges-out" id="cmp-badges-out"></div>
+        </section>
       </div>
       <div id="cmp-years" hidden>
         <h2 data-i18n="cmpYears_title"></h2>
         <p class="meta" id="cmp-year-meta"></p>
-        <p><button class="btn" id="cmp-year-btn" type="button"></button></p>
         <div class="year-bar" id="cmp-year-bar" hidden>
           <select id="cmp-year-select" data-i18n-aria-label="cmpYears_year"></select>
           <span class="meta" id="cmp-year-summary"></span>
         </div>
         <div id="cmp-year-chart"></div>
         <div class="table-wrap"><table class="year-cmp" id="cmp-year-table"></table></div>
+        <p class="meta" id="cmp-year-definitions" data-i18n="cmpYears_definitions"></p>
+        <p class="meta" id="cmp-year-note"></p>
         <div class="cmp-cols" id="cmp-year-cols"></div>
         <h2 id="cmp-all-title" data-i18n="cmpYears_allYears" hidden></h2>
         <div class="table-wrap"><table class="year-cmp" id="cmp-all-years"></table></div>
@@ -179,12 +275,18 @@
 <script src="../lib/i18n.js"></script>
 <script src="../lib/html.js"></script>
 <script src="../lib/years.js"></script>
+<script src="../lib/badges.js"></script>
 <script src="../lib/history.js"></script>
+<script src="../lib/progress.js"></script>
+<script src="../lib/continents.js"></script>
+<script src="../lib/country-names.js"></script>
 <script src="charts.js"></script>
 <script src="views.js"></script>
 <script src="compare.js"></script>
+<script src="compare-badges.js"></script>
 <script src="years.js"></script>
 <script src="countries.js"></script>
+<script src="badges.js"></script>
 <script src="dashboard.js"></script>
 </body>
 </html>

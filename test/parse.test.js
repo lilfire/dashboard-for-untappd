@@ -27,6 +27,36 @@ test('tolker eksempelsiden', () => {
   for (const list of [d.breweries, d.styles, d.countries]) assert.equal(sum(list), d.stats.unique);
 });
 
+test('tolker merkelisten', () => {
+  const doc = docOf(fixture('sample-badges.html'));
+  const list = parse.parseBadges(doc);
+  assert.equal(list.length, 8);
+  assert.equal(parse.parseBadgeListOwn(doc), true);
+  const byId = Object.fromEntries(list.map(b => [b.id, b]));
+  assert.deepEqual(byId['9010'], {
+    id: '9010', name: 'Testbryggeri Pioneer (Level 100)', base: 'Testbryggeri Pioneer',
+    image: 'https://assets.untappd.com/badges/pioneer_lg.jpg', level: 100, next: false, retired: false, date: '2026-08-28',
+  });
+  assert.deepEqual([byId['9009'].level, byId['9009'].next], [3, true]);
+  assert.deepEqual([byId['9001'].level, byId['9001'].next, byId['9001'].date], [null, true, '2023-11-30']);
+  assert.equal(byId['9008'].name, 'Festival & Fanatic');
+  assert.deepEqual([byId['9007'].retired, byId['9007'].level], [true, null]);
+  assert.equal(byId['9005'].image, null, 'bilder utenfor untappd.com tas ikke med');
+  assert.equal(byId['9005'].date, '2015-03-03', 'kort månedsnavn');
+  assert.equal(byId['9004'].date, '2026-06-04', 'datoformatet fra andres sider');
+  assert.deepEqual(parse.parseBadgeCounts(doc), { all: 7, beer: 4, special: 3 });
+});
+
+test('merkelisten til en venn: annen overskrift og ingen «neste nivå»', () => {
+  const doc = docOf(`<div class="box"><div class="content"><div class="header"><h3>Test User's Badges</h3></div>
+    <div class="badges"><div class="item badge-item not-retired level">
+      <a href="/user/Venn/badges/77"><div class="level-box">100</div><img src="https://assets.untappd.com/b.jpg">
+      <p class="name">Pioneer (Level 100)</p><p class="date time">Fri, 23 Sep 2022 20:23:01 +0000</p></a></div></div></div></div>`);
+  assert.equal(parse.parseBadgeListOwn(doc), false);
+  const [b] = parse.parseBadges(doc);
+  assert.deepEqual([b.level, b.next, b.date], [100, false, '2022-09-23']);
+});
+
 test('tolker siste øl med begge datoformater', () => {
   const [a, b] = parse.parseBeersPage(docOf(fixture('sample-beers.html'))).recent;
   assert.equal(a.id, '5001');
@@ -113,4 +143,16 @@ test('ekte ølside (private-beers.html)', { skip: !fs.existsSync(privateFixture)
   assert.ok(d.breweries.length > 0);
   for (const list of [d.breweries, d.styles, d.countries]) assert.equal(sum(list), d.stats.unique);
   assert.ok(d.recent.every(b => b.first && b.firstCheckinId));
+});
+
+test('tolker innsjekkingslister med bruker, øl og dato', () => {
+  const item = (id, user, time) => `<div class="item" id="checkin_${id}" data-checkin-id="${id}">
+    <div class="avatar"><a href="/user/${user}"><img></a></div>
+    <div class="checkin" id="checkin_comments_${id}"><p class="text"><a href="/user/${user}">Navn</a> is drinking a
+      <a href="/b/nøisom-juleol/1796301">Juleøl</a> by <a href="/w/noisom/1">Nøisom</a></p>
+      <a href="/user/${user}/checkin/${id}" class="time timezoner" data-checkin-id="${id}">${time}</a></div></div>`;
+  const rows = parse.parseCheckinFeed(docOf(`<div>${item('692518830', 'Lilfire', 'Tue, 25 Dec 2018 12:47:42 +0000')}${item('539855118', 'Venn', 'nonsense')}</div>`));
+  assert.equal(rows.length, 2, 'bare elementer med checkin_<tall>');
+  assert.deepEqual(rows[0], { id: '692518830', user: 'Lilfire', beerId: '1796301', at: '2018-12-25T12:47:42.000Z', date: '2018-12-25' });
+  assert.equal(rows[1].date, null);
 });

@@ -57,6 +57,18 @@ test('måneder og ukedager', () => {
   assert.equal(y2025.lastBeer.id, '6');
 });
 
+test('recap counts discovery dates and rating boundaries, including zero and five', () => {
+  const input = [0, 0.75, 1, 2.5, 3, 4, 5, null].map((ratingYou, i) =>
+    beer(i, i < 4 ? '2025-01-01' : '2025-03-02', { ratingYou }));
+  const [y] = years.buildYears(input).years;
+  assert.equal(y.discoveryDays, 2);
+  assert.equal(y.activeMonths, 2);
+  assert.deepEqual(y.ratingBuckets, [2, 1, 1, 1, 2]);
+  assert.equal(y.ratingBuckets.reduce((a, b) => a + b, 0), y.ratedCount);
+  const [unrated] = years.buildYears([beer(99, '2025-01-01')]).years;
+  assert.deepEqual(unrated.ratingBuckets, [0, 0, 0, 0, 0]);
+});
+
 test('sammenligner ett år mellom to personer', () => {
   const mine = [beer(1, '2025-02-01'), beer(2, '2025-03-01')];
   const theirs = [beer(2, '2025-04-01'), beer(9, '2025-05-01')];
@@ -88,23 +100,34 @@ test('timeline gir kumulativ utvikling måned for måned', () => {
     beer(2, '2025-01-10', { brewery: 'Bryggeri B', breweryUrl: '/B', style: 'Stout - Oatmeal' }),
     beer(3, '2025-01-20'),
   ]);
-  assert.deepEqual(line.map(p => p.date), ['2024-11-01', '2024-12-01', '2025-01-01']);
-  assert.deepEqual(line.map(p => p.unique), [1, 1, 3], 'desember uten nye øl beholder forrige verdi');
-  assert.deepEqual(line.map(p => p.breweries), [1, 1, 2]);
-  assert.deepEqual(line.map(p => p.styles), [1, 1, 2]);
+  assert.deepEqual(line.map(p => p.date), ['2024-10-01', '2024-11-01', '2024-12-01', '2025-01-01']);
+  assert.deepEqual(line.map(p => p.unique), [0, 1, 1, 3], 'desember uten nye øl beholder forrige verdi');
+  assert.deepEqual(line.map(p => p.breweries), [0, 1, 1, 2]);
+  assert.deepEqual(line.map(p => p.styles), [0, 1, 1, 2]);
 });
 
 test('timeline teller land når ølene er koblet til land', () => {
   const list = [beer(1, '2024-11-05'), beer(2, '2025-01-10'), beer(3, '2025-01-20')];
   const byBeer = { 1: 'Norway', 2: 'Belgium', 3: 'Norway' };
   const line = years.timeline(list, byBeer);
-  assert.deepEqual(line.map(p => p.countries), [1, 1, 2], 'desember uten nye øl beholder forrige verdi');
-  assert.deepEqual(years.timeline(list).map(p => p.countries), [0, 0, 0], 'uten kobling telles ingen land');
+  assert.deepEqual(line.map(p => p.countries), [0, 1, 1, 2], 'desember uten nye øl beholder forrige verdi');
+  assert.deepEqual(years.timeline(list).map(p => p.countries), [0, 0, 0, 0], 'uten kobling telles ingen land');
+});
+
+test('timeline med until fyller ut til samme sluttmåned', () => {
+  const list = [beer(1, '2024-11-05'), beer(2, '2024-12-10')];
+  const line = years.timeline(list, null, { until: '2025-02' });
+  assert.deepEqual(line.map(p => p.date), ['2024-10-01', '2024-11-01', '2024-12-01', '2025-01-01', '2025-02-01']);
+  assert.deepEqual(line.map(p => p.unique), [0, 1, 2, 2, 2], 'utfylte måneder beholder siste verdi');
+  assert.deepEqual(years.timeline(list, null, { until: '2024-06' }).map(p => p.date), ['2024-10-01', '2024-11-01', '2024-12-01'],
+    'until før siste øl endrer ingenting');
 });
 
 test('timeline over årsskifte og uten data', () => {
   const line = years.timeline([beer(1, '2023-12-31'), beer(2, '2024-02-01')]);
-  assert.deepEqual(line.map(p => p.date), ['2023-12-01', '2024-01-01', '2024-02-01']);
+  assert.deepEqual(line.map(p => p.date), ['2023-11-01', '2023-12-01', '2024-01-01', '2024-02-01']);
+  assert.deepEqual(years.timeline([beer(1, '2024-01-15')]).map(p => [p.date, p.unique]), [['2023-12-01', 0], ['2024-01-01', 1]],
+    'nullpunkt for januar havner i desember året før');
   assert.deepEqual(years.timeline([]), []);
   assert.deepEqual(years.timeline(null), []);
 });
@@ -112,4 +135,67 @@ test('timeline over årsskifte og uten data', () => {
 test('tåler tom historikk', () => {
   assert.deepEqual(years.buildYears([]).years, []);
   assert.deepEqual(years.buildYears(null).years, []);
+});
+
+test('checkinsByYear teller innsjekkinger samme år og over årsskiftet uten ekstra data', () => {
+  const c = years.checkinsByYear([
+    beer(1, '2024-03-05'),
+    { ...beer(2, '2024-01-10', { checkins: 5 }), recent: '2024-12-01' },
+    { ...beer(3, '2024-12-31', { checkins: 2 }), recent: '2025-01-01' },
+  ]);
+  assert.deepEqual(Object.fromEntries(c), { 2024: { count: 7, pending: false }, 2025: { count: 1, pending: false } });
+});
+
+test('checkinsByYear venter på datoer for øl drukket flere ganger over flere år', () => {
+  const b = { ...beer(1, '2023-07-01', { checkins: 4 }), recent: '2025-07-01' };
+  assert.equal(years.needsCheckinDates(b), true);
+  assert.deepEqual(Object.fromEntries(years.checkinsByYear([b])), {
+    2023: { count: 1, pending: true }, 2024: { count: 0, pending: true }, 2025: { count: 1, pending: true },
+  });
+});
+
+test('checkinsByYear bruker hentede datoer når antallet stemmer', () => {
+  const b = { ...beer(1, '2023-07-01', { checkins: 4 }), recent: '2025-07-01', checkinDates: ['2023-07-01', '2023-12-24', '2025-01-01', '2025-07-01'] };
+  assert.equal(years.needsCheckinDates(b), false);
+  assert.deepEqual(Object.fromEntries(years.checkinsByYear([b])), { 2023: { count: 2, pending: false }, 2025: { count: 2, pending: false } });
+  // Ny innsjekking siden datoene ble hentet: da må de hentes på nytt.
+  assert.equal(years.needsCheckinDates({ ...b, checkins: 5 }), true);
+});
+
+test('checkinsByYear uten antall faller tilbake til første og siste dato', () => {
+  const c = years.checkinsByYear([
+    { ...beer(1, '2024-05-01'), checkins: null },
+    { ...beer(2, '2024-05-01'), checkins: null, recent: '2025-02-01' },
+  ]);
+  assert.deepEqual(Object.fromEntries(c), { 2024: { count: 2, pending: false }, 2025: { count: 1, pending: false } });
+});
+
+test('buildYears gir innsjekkinger per år', () => {
+  assert.equal(years.buildYears(data).checkins.get(2025).count, 4);
+  assert.equal(years.buildYears([]).checkins.size, 0);
+});
+
+test('uniqueByYear teller et øl i hvert år det er sjekket inn, også når det er smakt før', () => {
+  const again = { ...beer(1, '2025-06-01', { checkins: 2 }), recent: '2026-02-01' };
+  const sameYear = { ...beer(2, '2026-01-10', { checkins: 4 }), recent: '2026-08-01' };
+  assert.deepEqual(Object.fromEntries(years.uniqueByYear([again, sameYear])), {
+    2025: { count: 1, pending: false }, 2026: { count: 2, pending: false },
+  });
+  const built = years.buildYears([again, sameYear]);
+  assert.equal(built.years.find(y => y.year === 2026).beers, 1, 'bare ett av dem er nytt i 2026');
+  assert.equal(built.unique.get(2026).count, 2);
+});
+
+test('uniqueByYear venter på årene mellom første og siste når datoene mangler', () => {
+  const b = { ...beer(1, '2024-03-01', { checkins: 5 }), recent: '2026-03-01' };
+  assert.deepEqual(Object.fromEntries(years.uniqueByYear([b])), {
+    2024: { count: 1, pending: false }, 2025: { count: 0, pending: true }, 2026: { count: 1, pending: false },
+  });
+});
+
+test('uniqueByYear bruker hentede datoer og teller hvert år én gang', () => {
+  const b = { ...beer(1, '2024-03-01', { checkins: 3 }), recent: '2026-03-01', checkinDates: ['2024-03-01', '2026-01-01', '2026-03-01'] };
+  assert.deepEqual(Object.fromEntries(years.uniqueByYear([b])), {
+    2024: { count: 1, pending: false }, 2026: { count: 1, pending: false },
+  });
 });

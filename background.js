@@ -26,7 +26,7 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg?.type === 'dfu:history-page') {
-    api.tabs.sendMessage(msg.tabId, { type: 'dfu:fetch-history', url: msg.url })
+    api.tabs.sendMessage(msg.tabId, { type: 'dfu:fetch-history', url: msg.url, kind: msg.kind })
       .then(sendResponse, err => sendResponse({ ok: false, error: String(err) }));
     return true;
   }

@@ -10,6 +10,7 @@
   const sum = list => list.reduce((s, x) => s + x.count, 0);
   const collator = () => new Intl.Collator(i18n.locale(), { sensitivity: 'base' });
   const num = n => i18n.number(n);
+  const label = x => x.label ?? x.name;
 
   // Markerer søketreffet i navnet, også når søket ignorerer aksenter (brau → Bräu).
   function highlight(name, q) {
@@ -26,10 +27,11 @@
   }
 
   // Sorterer etter antall og gir delt plass ved likt antall.
+  // label er navnet som vises (land oversettes); søket treffer både det og det opprinnelige navnet.
   function ranked(list) {
     const c = collator();
-    const rows = list.map(x => ({ ...x, folded: fold(x.name) }))
-      .sort((a, b) => b.count - a.count || c.compare(a.name, b.name));
+    const rows = list.map(x => ({ ...x, folded: [x.name, x.label].filter(Boolean).map(fold).join('\n') }))
+      .sort((a, b) => b.count - a.count || c.compare(label(a), label(b)));
     let place = 0;
     rows.forEach((r, i) => {
       if (i === 0 || r.count !== rows[i - 1].count) place = i + 1;
@@ -37,6 +39,23 @@
     });
     rows.forEach((r, i) => { r.tie = rows[i - 1]?.count === r.count || rows[i + 1]?.count === r.count; });
     return rows;
+  }
+
+  // sort = 'count-desc' | 'count-asc' | 'name-asc' | 'name-desc', som i sorteringsvelgerne.
+  function sorter(sort) {
+    const [key, dir] = sort.split('-');
+    const sign = dir === 'asc' ? 1 : -1;
+    const c = collator();
+    return key === 'name'
+      ? (x, y) => sign * c.compare(label(x), label(y))
+      : (x, y) => sign * (x.count - y.count) || c.compare(label(x), label(y));
+  }
+
+  /* ---------- Søk og sortering (felles for bryggerier, land og stiler) ---------- */
+  function initControls(prefix, state, rerender) {
+    $(`${prefix}-q`).addEventListener('input', e => { state.q = e.target.value; rerender(); });
+    $(`${prefix}-sort`).addEventListener('change', e => { state.sort = e.target.value; rerender(); });
+    onQuickFilter(prefix, state, rerender);
   }
 
   const bar = (count, max) =>
@@ -58,22 +77,43 @@
     : b.max === Infinity ? t('bucket_plus', b.min)
     : b.min === b.max ? t('totalBeers', b.min) : t('bucket_range', b.min, b.max));
 
-  const B = { q: '', bucket: null, sort: 'count-desc', rows: [], total: 0, max: 1, isNew: new Set() };
+  // Etiketten lages ved bruk, så den følger valgt språk.
+  const countGroups = () => BUCKETS.map(b => ({ id: b.id, label: bucketLabel(b), test: r => r.count >= b.min && r.count <= b.max }));
 
-  function renderDist() {
-    render($('dist'), BUCKETS.map(b => {
-      const inB = B.rows.filter(r => r.count >= b.min && r.count <= b.max);
-      const beers = sum(inB);
-      const pct = B.total ? Math.round(beers / B.total * 100) : 0;
-      return html`<button class="bucket" type="button" data-bucket="${b.id}" aria-pressed="false">
-        <span class="lbl">${bucketLabel(b)}</span>
-        <span class="num">${num(inB.length)}</span>
-        <span class="sub">${t('bucket_unit')}</span>
-        <span class="share"><i style="width:${Math.max(pct, inB.length ? 1 : 0)}%"></i></span>
+  /* ---------- Hurtigfilter (felles for bryggerier, land og stiler) ---------- */
+  // groups = [{ id, label, test(rad), hideEmpty }]. Stripen viser andelen av alle ølene.
+  function renderQuickFilter(prefix, groups, rows, unit, total) {
+    render($(`${prefix}-dist`), groups.flatMap(g => {
+      const inG = rows.filter(g.test);
+      if (g.hideEmpty && !inG.length) return [];
+      const beers = sum(inG);
+      const pct = total ? Math.round(beers / total * 100) : 0;
+      return [html`<button class="bucket" type="button" data-bucket="${g.id}" aria-pressed="false">
+        <span class="lbl">${g.label}</span>
+        <span class="num">${num(inG.length)} <small>${t(unit)}</small></span>
+        <span class="share"><i style="width:${Math.max(pct, inG.length ? 1 : 0)}%"></i></span>
         <span class="sub">${t('bucket_share', num(beers), pct)}</span>
-      </button>`;
+      </button>`];
     }));
   }
+
+  // Markerer valgt gruppe, og viser den i overskriften så filteret synes også når boksen er lukket.
+  function markQuickFilter(prefix, group) {
+    for (const el of $(`${prefix}-dist`).querySelectorAll('.bucket')) el.setAttribute('aria-pressed', String(el.dataset.bucket === group?.id));
+    $(`${prefix}-dist-active`).textContent = group ? group.label : '';
+  }
+
+  // Klikk på en gruppe velger den, klikk igjen fjerner filteret.
+  function onQuickFilter(prefix, state, rerender) {
+    $(`${prefix}-dist`).addEventListener('click', e => {
+      const btn = e.target.closest('.bucket');
+      if (!btn) return;
+      state.bucket = state.bucket === btn.dataset.bucket ? null : btn.dataset.bucket;
+      rerender();
+    });
+  }
+
+  const B = { q: '', bucket: null, sort: 'count-desc', rows: [], total: 0, max: 1, isNew: new Set() };
 
   const openBreweries = new Set();
   const MAX_BEERS_PER_ROW = 300;
@@ -109,7 +149,7 @@
       <td class="num">${fmt(b.ratingYou)}</td></tr>`);
     const more = list.length > MAX_BEERS_PER_ROW
       ? html`<tr><td colspan="3" class="meta">… +${num(list.length - MAX_BEERS_PER_ROW)}</td></tr>` : '';
-    return html`<table class="list"><tbody>${rows}${more}</tbody></table>`;
+    return html`<table class="list beer-list"><tbody>${rows}${more}</tbody></table>`;
   }
 
   // Klikk på et bryggeri åpner eller lukker ølene fra det bryggeriet.
@@ -126,14 +166,8 @@
 
   function renderBreweries() {
     const q = fold(B.q.trim());
-    const b = BUCKETS.find(x => x.id === B.bucket);
-    let list = B.rows.filter(r => (!q || r.folded.includes(q)) && (!b || (r.count >= b.min && r.count <= b.max)));
-    const [key, dir] = B.sort.split('-');
-    const sign = dir === 'asc' ? 1 : -1;
-    const c = collator();
-    list = list.slice().sort(key === 'name'
-      ? (x, y) => sign * c.compare(x.name, y.name)
-      : (x, y) => sign * (x.count - y.count) || c.compare(x.name, y.name));
+    const b = countGroups().find(x => x.id === B.bucket);
+    const list = B.rows.filter(r => (!q || r.folded.includes(q)) && (!b || b.test(r))).sort(sorter(B.sort));
 
     const beers = beersByBrewery();
     const hasHistory = beers.count > 0;
@@ -161,29 +195,16 @@
       ? `${t('showing', num(list.length), num(B.rows.length))} · ${t('totalBeers', num(sum(list)))}`
       : `${num(B.rows.length)} ${t('kpi_breweries').toLowerCase()} · ${t('totalBeers', num(B.total))}`)
       + (hasHistory ? '' : ` · ${t('breweries_needHistory')}`);
-    $('b-reset').hidden = !(filtered || B.sort !== 'count-desc');
     $('b-sort').value = B.sort;
-    for (const el of document.querySelectorAll('.bucket')) el.setAttribute('aria-pressed', String(el.dataset.bucket === B.bucket));
-  }
-
-  function initBreweries() {
-    $('b-q').addEventListener('input', e => { B.q = e.target.value; renderBreweries(); });
-    $('b-sort').addEventListener('change', e => { B.sort = e.target.value; renderBreweries(); });
-    $('b-reset').addEventListener('click', () => {
-      Object.assign(B, { q: '', bucket: null, sort: 'count-desc' });
-      $('b-q').value = '';
-      renderBreweries();
-    });
-    $('dist').addEventListener('click', e => {
-      const btn = e.target.closest('.bucket');
-      if (!btn) return;
-      B.bucket = B.bucket === btn.dataset.bucket ? null : btn.dataset.bucket;
-      renderBreweries();
-    });
+    markQuickFilter('b', b);
   }
 
   /* ---------- Land ---------- */
-  const C = { q: '', rows: [], total: 0, max: 1, isNew: new Set() };
+  const C = { q: '', bucket: null, sort: 'count-desc', rows: [], total: 0, max: 1, isNew: new Set() };
+
+  // Verdensdel per land; «Annet» og tomme verdensdeler vises bare når de har land.
+  const continentGroups = () => [...root.DFU.continents.CONTINENTS, 'other']
+    .map(id => ({ id, label: t(`continent_${id}`), test: r => r.continent === id, hideEmpty: true }));
 
   const openCountries = new Set();
   const openCountryBreweries = new Set();
@@ -219,7 +240,8 @@
 
   function renderCountries() {
     const q = fold(C.q.trim());
-    const list = C.rows.filter(r => !q || r.folded.includes(q));
+    const g = continentGroups().find(x => x.id === C.bucket);
+    const list = C.rows.filter(r => (!q || r.folded.includes(q)) && (!g || g.test(r))).sort(sorter(C.sort));
     const pct = r => (r.count / C.total * 100).toLocaleString(i18n.locale(), { maximumFractionDigits: 1 });
     const mapped = Object.keys(root.DFU.countries?.byBeer() ?? {}).length > 0;
     const hasHistory = (root.DFU.yearsView?.state?.history?.beers ?? []).length > 0;
@@ -228,8 +250,8 @@
     const rows = list.flatMap(r => {
       const open = canExpand && openCountries.has(r.name);
       const name = canExpand
-        ? html`<button type="button" class="row-toggle" data-country="${r.name}" aria-expanded="${open ? 'true' : 'false'}">${highlight(r.name, q)}</button>`
-        : highlight(r.name, q);
+        ? html`<button type="button" class="row-toggle" data-country="${r.name}" aria-expanded="${open ? 'true' : 'false'}">${highlight(r.label, q)}</button>`
+        : highlight(r.label, q);
       const main = html`<tr>${rankCell(r)}
         <td>${name}${newTag(C.isNew.has(r.id))}</td>
         <td>${bar(r.count, C.max)}</td>
@@ -239,9 +261,11 @@
     render($('c-rows'), rows.length ? rows : emptyRow(4));
 
     const hint = canExpand ? '' : ` · ${hasHistory ? t('countries_needSyncHint') : t('countries_needHistory')}`;
-    $('c-meta').textContent = q
-      ? t('showing', num(list.length), num(C.rows.length))
+    $('c-meta').textContent = q || g
+      ? `${t('showing', num(list.length), num(C.rows.length))} · ${t('totalBeers', num(sum(list)))}`
       : `${num(C.rows.length)} ${t('kpi_countries').toLowerCase()} · ${t('untappdCounts')}${hint}`;
+    $('c-sort').value = C.sort;
+    markQuickFilter('c', g);
   }
 
   // Klikk på et land åpner bryggeriene der, og hvert bryggeri kan åpnes videre.
@@ -264,7 +288,7 @@
   document.addEventListener('dfu:history', () => { if (C.rows.length) renderCountries(); });
 
   /* ---------- Stiler ---------- */
-  const S = { q: '', families: [], max: 1, isNew: new Set(), open: new Set() };
+  const S = { q: '', bucket: null, sort: 'count-desc', families: [], max: 1, isNew: new Set(), open: new Set() };
 
   function groupStyles(styles) {
     const map = new Map();
@@ -306,16 +330,21 @@
       <td class="num">${fmt(b.ratingYou)}</td></tr>`);
     const more = list.length > MAX_BEERS_PER_STYLE
       ? html`<tr><td colspan="3" class="meta">… +${num(list.length - MAX_BEERS_PER_STYLE)}</td></tr>` : '';
-    return html`<table class="list"><tbody>${rows}${more}</tbody></table>`;
+    return html`<table class="list beer-list"><tbody>${rows}${more}</tbody></table>`;
   }
 
   function renderStyles() {
     const q = fold(S.q.trim());
     const byStyle = beersByStyle();
     const hasHistory = byStyle.size > 0;
+    const g = countGroups().find(x => x.id === S.bucket);
+    const filtered = Boolean(q || g);
+    const order = sorter(S.sort);
+    // f.styles beholder rekkefølgen etter antall, så f.styles[0] er største stil i familien (brukes av baren).
     const shown = S.families
-      .map(f => ({ ...f, hits: q ? f.styles.filter(s => s.folded.includes(q) || f.folded.includes(q)) : f.styles }))
-      .filter(f => f.hits.length);
+      .map(f => ({ ...f, hits: f.styles.filter(s => (!q || s.folded.includes(q) || f.folded.includes(q)) && (!g || g.test(s))).sort(order) }))
+      .filter(f => f.hits.length)
+      .sort(order);
 
     const styleBlock = (s, f) => {
       const list = byStyle.get(s.name) ?? [];
@@ -326,15 +355,20 @@
         ${head}${list.length ? styleBeers(list) : html`<p class="meta">${t('styles_noBeers')}</p>`}</details>`;
     };
 
-    render($('s-rows'), shown.length ? shown.map(f => html`<details class="family" data-family="${f.name}"${q || S.open.has(f.name) ? raw(' open') : ''}>
+    render($('s-rows'), shown.length ? shown.map(f => html`<details class="family" data-family="${f.name}"${filtered || S.open.has(f.name) ? raw(' open') : ''}>
         <summary><span class="name">${highlight(f.name, q)}<small>${t('styles_in', f.styles.length)}</small>${newTag(f.styles.some(s => S.isNew.has(s.id)))}</span>
           ${bar(f.count, S.max)}</summary>
         <div class="styles">${f.hits.map(s => styleBlock(s, f))}</div>
       </details>`) : html`<p class="meta">${t('emptySearch')}</p>`);
 
     const styleCount = S.families.reduce((n, f) => n + f.styles.length, 0);
-    $('s-meta').textContent = `${num(styleCount)} ${t('kpi_styles').toLowerCase()} · ${t('families_count', num(S.families.length))}`
+    const hitStyles = shown.flatMap(f => f.hits);
+    $('s-meta').textContent = (filtered
+      ? `${t('showing', num(hitStyles.length), num(styleCount))} · ${t('totalBeers', num(sum(hitStyles)))}`
+      : `${num(styleCount)} ${t('kpi_styles').toLowerCase()} · ${t('families_count', num(S.families.length))}`)
       + (hasHistory ? '' : ` · ${t('styles_needHistory')}`);
+    $('s-sort').value = S.sort;
+    markQuickFilter('s', g);
   }
 
   // Årsfanen sier fra når historikken er hentet, så ølene kan vises under hver stil.
@@ -365,11 +399,11 @@
   }
 
   function init() {
-    initBreweries();
-    $('c-q').addEventListener('input', e => { C.q = e.target.value; renderCountries(); });
-    $('s-q').addEventListener('input', e => { S.q = e.target.value; renderStyles(); });
+    initControls('b', B, renderBreweries);
+    initControls('c', C, renderCountries);
+    initControls('s', S, renderStyles);
     $('s-rows').addEventListener('toggle', e => {
-      if (S.q) return;
+      if (S.q || S.bucket) return;
       const { family, style } = e.target.dataset ?? {};
       const set = family ? S.open : style ? openStyles : null;
       const name = family ?? style;
@@ -386,23 +420,43 @@
     B.total = sum(data.breweries);
     B.max = B.rows[0]?.count || 1;
     B.isNew = ids('breweries');
-    renderDist();
+    renderQuickFilter('b', countGroups(), B.rows, 'bucket_unit', B.total);
     renderBreweries();
 
-    C.rows = ranked(data.countries);
+    const { localName } = root.DFU.countryNames;
+    C.rows = ranked(data.countries.map(r => ({ ...r, label: localName(r.name, i18n.locale()) })))
+      .map(r => ({ ...r, continent: root.DFU.continents.continentOf(r.name) }));
     C.total = sum(data.countries) || 1;
     C.max = C.rows[0]?.count || 1;
     C.isNew = ids('countries');
+    renderQuickFilter('c', continentGroups(), C.rows, 'bucket_unitCountries', C.total);
     renderCountries();
 
     S.families = groupStyles(data.styles);
     S.max = S.families[0]?.count || 1;
     S.isNew = ids('styles');
+    renderQuickFilter('s', countGroups(), S.families.flatMap(f => f.styles), 'bucket_unitStyles', sum(data.styles));
     renderStyles();
 
     renderRecent(data.recent, username);
   }
 
+  // Nøkkeltallene øverst, og samme stripe for vennen i sammenligningen.
+  function renderKpis(el, data) {
+    const s = data.stats ?? {};
+    const tiles = [
+      ['kpi_total', s.total],
+      ['kpi_unique', s.unique],
+      ['kpi_breweries', data.breweries?.length],
+      ['kpi_countries', data.countries?.length],
+      ['kpi_styles', data.styles?.length],
+      ['kpi_badges', s.badges],
+      ['kpi_friends', s.friends],
+    ];
+    render(el, tiles.map(([key, value]) => html`<div class="kpi">
+      <span class="v">${value == null ? '–' : num(value)}</span><span class="l">${t(key)}</span></div>`));
+  }
+
   root.DFU = root.DFU || {};
-  root.DFU.views = { init, setData, helpers: { fold, highlight, ranked, sum } };
+  root.DFU.views = { init, setData, renderKpis, helpers: { fold, highlight, ranked, sum } };
 })(globalThis);

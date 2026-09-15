@@ -25,9 +25,6 @@
     return C.countries.filter(c => (stored[c.id] ?? -1) !== (c.count ?? 0));
   };
 
-  const pagesFor = list =>
-    list.reduce((n, c) => n + Math.max(1, Math.ceil((c.count ?? 0) / history.PAGE_SIZE)), 0);
-
   function renderSync() {
     if (!$('c-sync-text')) return;
     $('c-sync-stop').hidden = !C.syncing;
@@ -37,7 +34,7 @@
     $('c-sync-text').textContent = !hasHistory() ? t('countries_needHistory2')
       : C.data.at && !stale.length ? ''
       : C.stoppedByUser ? t('countries_aborted')
-      : t('countries_pending', num(stale.length), num(pagesFor(stale)));
+      : t('countries_pending', num(stale.length), num(history.pagesFor(stale)));
   }
 
   let currentSync = null;
@@ -52,6 +49,8 @@
     C.syncing = true;
     C.controller = new AbortController();
     renderSync();
+    const eta = root.DFU.progress.createEta({ fallbackMs: history.DELAY_MS + 400 });
+    const totalPages = history.pagesFor(list);
     try {
       const res = await history.syncCountries(C.user, {
         countries: list,
@@ -64,8 +63,10 @@
           });
         },
         onProgress: p => {
-          $('c-sync-text').textContent = t('countries_syncing', p.country, num(p.index + 1), num(p.total), num(p.beers));
-          $('c-progress').firstElementChild.style.width = `${Math.round((p.index + 1) / p.total * 100)}%`;
+          const { fraction, remainingMs } = eta.update(p.pages, totalPages);
+          const left = root.DFU.progress.formatEta(remainingMs, t);
+          $('c-sync-text').textContent = [t('countries_syncing', p.country, num(p.index + 1), num(p.total), num(p.beers)), left].filter(Boolean).join(' · ');
+          $('c-progress').firstElementChild.style.width = `${Math.round(fraction * 100)}%`;
         },
       });
       const byBeer = { ...C.data.byBeer, ...res.byBeer };

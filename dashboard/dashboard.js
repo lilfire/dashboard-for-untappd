@@ -12,7 +12,6 @@
   let trendMetric = 'unique';
 
   const latest = () => state?.snapshots?.at(-1) ?? null;
-  const num = n => (n == null ? '–' : i18n.number(n));
 
   /* ---------- Varsler og status ---------- */
   function showAlert(text, actionLabel, action, kind = 'error') {
@@ -95,6 +94,8 @@
       await render();
       await DFU.yearsView.refresh();
       await DFU.countries.refresh(user, data.countries);
+      await compare.refresh();
+      await DFU.badgesView.refresh(user, data.stats?.badges ?? null);
     } catch (err) {
       showAlert(t('err_network', err.message));
     } finally {
@@ -103,24 +104,6 @@
   }
 
   /* ---------- Visning ---------- */
-  const { html, render: renderHTML } = DFU.html;
-
-  function renderKpis(data, change) {
-    const s = data.stats ?? {};
-    const tiles = [
-      ['kpi_total', s.total, change?.total],
-      ['kpi_unique', s.unique, change?.unique],
-      ['kpi_breweries', data.breweries.length, change?.breweries.added.length],
-      ['kpi_countries', data.countries.length, change?.countries.added.length],
-      ['kpi_styles', data.styles.length, change?.styles.added.length],
-      ['kpi_badges', s.badges, null],
-      ['kpi_friends', s.friends, null],
-    ];
-    renderHTML($('kpis'), tiles.map(([key, value, delta]) => html`<div class="kpi">
-      <span class="v">${num(value)}</span><span class="l">${t(key)}</span>
-      ${delta > 0 ? html`<span class="d">+${num(delta)}</span>` : ''}</div>`));
-  }
-
   function renderTrend() {
     for (const b of document.querySelectorAll('#trend-metric button')) b.setAttribute('aria-pressed', String(b.dataset.metric === trendMetric));
 
@@ -157,7 +140,7 @@
     $('content').hidden = false;
     $('user-name').textContent = snap.data.pageOwner || user;
     document.title = `${snap.data.pageOwner || user} · Dashboard for Untappd`;
-    renderKpis(snap.data, change);
+    views.renderKpis($('kpis'), snap.data);
     views.setData(snap.data, change, user);
     compare.setMe(snap.data);
     await DFU.yearsView.setUser(snap.data.pageOwner || user, snap.data.stats?.unique ?? null);

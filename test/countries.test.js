@@ -21,7 +21,8 @@ async function setup(saved) {
       loadCountries: () => new Promise(resolve => { resolveLoad = resolve; }),
       saveCountries: async (user, value) => { writes.push(value); return value; },
     },
-    history: { PAGE_SIZE: 25, syncCountries: async (user, options) => {
+    progress: require('../lib/progress.js'),
+    history: { PAGE_SIZE: 25, DELAY_MS: 0, pagesFor: require('../lib/history.js').pagesFor, syncCountries: async (user, options) => {
       requests.push(options.countries.map(c => c.id));
       return { byBeer: {}, counts: {}, complete: true };
     } },

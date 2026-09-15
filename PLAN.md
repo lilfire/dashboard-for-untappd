@@ -47,9 +47,51 @@ brukeren er informert i README, og henting skjer bare når brukeren trykker.
 nye bryggerier, nye stiler, snittrangering mot global, snitt alkohol, sterkeste, topp 5, lavest rangerte,
 toppstiler, toppbryggerier, måneder, ukedager, første og siste øl. `compareYear` gir felles og unike øl.
 
-**Ikke mulig fra denne kilden:** steder, byer, merker og gjentatte innsjekkinger (Recappd har dem fra
+**Ikke mulig fra denne kilden:** steder, byer og gjentatte innsjekkinger (Recappd har dem fra
 innsjekkingsfeeden, som ville doblet antall kall). Våre «nye øl i året» er øl smakt første gang det året,
-mens Recappd teller alle unike øl sjekket inn det året.
+mens Recappd teller alle unike øl sjekket inn det året. Merker kommer fra merkesiden (se under).
+
+## Versjon 1.2: merker
+
+Et troféskap, ikke en komplett merkeliste. Antall nye merker og mellomnivåer er ikke interessant. Det som vises:
+merker tatt til **maks nivå** og **spesialmerker** (eventer, høytider, kampanjer). I tillegg får årsfanen kortet «Årets merker».
+
+**Kartlegging (15. september 2026, Lilfire):**
+
+- `/user/<bruker>/badges` har filterlenker med antall: `All Badges (2235)`, `Beer (1974)`, `Venue (68)`, `Special (189)`,
+  med `?segment=beer|venue|special`
+- Hvert merke: `.item.badge-item` med klassene `retired`/`not-retired` og `level`. Lenken `/user/<bruker>/badges/<id>`,
+  `img` fra `assets.untappd.com`, `.name` («Navn (Level N)»), `.date` («November 30, 2023»)
+- Nivåmerker fra nivå 2 har `.level-box` med nivået. Kan merket gå videre, finnes `.next-level` («Unlock the next level»)
+- **Maks nivå** = `.level-box` uten `.next-level`, og ikke pensjonert. Klassen `level` alene sier ingenting (også på pensjonerte engangsmerker)
+- Listen viser hvert merke én gang, på høyeste nivå. Et nytt nivå gir ny ID og flytter merket øverst
+- «Show More»: `GET /profile/more_badges/<bruker>/<offset>?sort=unlocked&segment=<segment>` med `X-Requested-With`,
+  52 merker per side. Første side kan i tillegg ha noen «Local Badges» øverst
+- Fragmentet sier ikke hvilken kategori et merke har. Derfor hentes `segment=special` først, så `segment=all`
+
+**Kode:** `parse.parseBadges`/`parseBadgeCounts`, `lib/badges.js` (klassifisering, sammenslåing på navn uten nivå,
+gruppering), `history.syncBadges` (stopper på første kjente side), `store.loadBadges`/`saveBadges`,
+`dashboard/badges.js`. Hentes etter Oppdater når merketallet på profilen er endret, hentingen er ufullstendig, eller det har gått en uke.
+
+**Usikkert:** om merketallet på profilen øker når et merke går opp et nivå. Ukesgrensen fanger det uansett.
+
+### Merker i sammenligningen
+
+Kartlagt på tre venners merkesider (15. september 2026):
+
+- Samme oppbygning og blaing som egen side, men **`.next-level` vises aldri på andres sider**
+- Overskriften er «Your Badges» bare på egen side (`parse.parseBadgeListOwn`, lagret som `own`)
+- Datoen kan også stå som «Thu, 04 Jun 2026 21:17:07 +0000», også på egen side. `parseBadgeDate` leser begge
+
+**Maks nivå hos andre:** nivå ≥ 100 (100 er høyeste nivå på Untappd), eller samme nivå som ditt eget merke på maks.
+`badges.compare` gir felles, bare du og bare vennen for maks nivå og spesialmerker. Den markerer hvem som tok merket først,
+og har den andres nivå på radene med bare én av dere.
+
+**Henting:** `dashboard/compare-badges.js` starter når vennen velges, etter landkoblingen, så det aldri går mer enn to
+hentinger samtidig. Hentingen stoppes når en annen venn velges. Vennens merker lagres under `u:<venn>:badges`.
+
+**Svakhet:** hos andre er et spesialmerke på nivå 1 (uten nivåboks) umulig å skille fra et engangsmerke, så det
+kan telle som spesialmerke.
 
 ## Status
 
@@ -109,6 +151,7 @@ henting som hovedkilde og lar fane og besøk bare fylle inn dato.
 - **Bryggerier:** søk, filter på antall øl (1 / 2 / 3–4 / 5–9 / 10–19 / 20+), sortering, lenke til `untappd.com/brewery/<id>`
 - **Land:** rangert liste med stolper
 - **Stiler:** gruppert i familier (tekst før « - »), med mulighet til å klikke seg ned i hver familie
+- **Merker:** maks nivå og spesialmerker gruppert etter år (se versjon 1.2)
 - **Siste øl:** de 25 nyeste, din rangering mot den globale
 - **Nytt siden sist:** nye bryggerier, land og stiler, og bryggerier som har fått flere øl
 - **Utvikling over tid:** kurve over unike øl, bryggerier og land fra øyeblikksbildene
