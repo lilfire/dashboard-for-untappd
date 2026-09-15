@@ -1,6 +1,6 @@
 # Dashboard for Untappd
 
-Nettleserutvidelse for Firefox og Chrome som viser ditt eget Untappd-dashbord, hentet med innloggingen du allerede har i nettleseren.
+Nettleserutvidelse for Firefox, Chrome og andre Chromium-baserte nettlesere, også på Android, som viser ditt eget Untappd-dashbord, hentet med innloggingen du allerede har i nettleseren.
 
 **Ikke tilknyttet Untappd.** Utvidelsen kontakter bare untappd.com, har ingen sporing og lagrer dataene bare i nettleseren din.
 
@@ -55,17 +55,34 @@ vennen regnes derfor nivå 100 som maks, i tillegg til merker der du selv er på
 2. Firefox spør om du vil legge til utvidelsen. Trykk **Legg til**
 3. Nye versjoner installeres automatisk
 
-### Chrome
+### Chrome, Edge, Vivaldi og Brave
 1. Last ned siste `dashboard-for-untappd-chrome-<versjon>.zip` fra [Releases](https://github.com/lilfire/dashboard-for-untappd/releases) og pakk den ut
-2. Gå til `chrome://extensions`, slå på **Utviklermodus** og trykk **Last inn upakket**
+2. Gå til utvidelsessiden (`chrome://extensions`, `edge://extensions`, `vivaldi://extensions` eller `brave://extensions`), slå på **Utviklermodus** og trykk **Last inn upakket**
 3. Velg den utpakkede mappen
 
 Chrome-versjonen oppdateres ikke automatisk. Gjenta stegene når det kommer en ny versjon.
 
+### Mobil
+Chrome og Safari på mobil støtter ikke denne typen utvidelser. På Android fungerer disse:
+
+**Firefox for Android**
+1. Last ned siste `dashboard-for-untappd-<versjon>.xpi` fra [Releases](https://github.com/lilfire/dashboard-for-untappd/releases) i Firefox på telefonen
+2. Gå til **Innstillinger → Om Firefox** og trykk fem ganger på Firefox-logoen
+3. Tilbake i **Innstillinger**, trykk **Installer tillegg fra fil** og velg `.xpi`-filen
+4. Nye versjoner installeres automatisk
+
+**Titanium Browser**
+1. Last ned siste `dashboard-for-untappd-chrome-<versjon>.zip` fra [Releases](https://github.com/lilfire/dashboard-for-untappd/releases) og pakk den ut
+2. Gå til `chrome://extensions`, slå på **Utviklermodus** og trykk **Last inn upakket**
+3. Velg den utpakkede mappen
+4. Oppdateres ikke automatisk
+
+Vivaldi og Edge på Android installerer bare utvidelser fra sine egne butikker, og støttes derfor ikke.
+
 ## Bruk
 
 1. Logg inn på [untappd.com](https://untappd.com) i samme nettleser
-2. Klikk på utvidelsesikonet. Dashbordet henter ølhistorikken din
+2. Klikk på utvidelsesikonet (på mobil: nettleserens meny → **Utvidelser**). Dashbordet henter ølhistorikken din
 3. Trykk **Oppdater** for ferske tall. Dataene oppdateres også automatisk når de er eldre enn 6 timer, og når du selv åpner ølsiden din på Untappd
 
 Under **Innstillinger** kan du velge brukernavn, språk og hvor ofte dataene skal oppdateres, og slette alle lagrede data.
