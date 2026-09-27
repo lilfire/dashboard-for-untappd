@@ -18,6 +18,7 @@
   .danger { display: grid; gap: 8px; padding: 18px; border: 1px solid var(--line); border-radius: 8px; }
   .btn.warn { border-color: var(--bad); color: var(--bad); background: transparent; }
   .saved { color: var(--new); font-weight: 600; }
+  .hint { color: var(--muted); flex: 1 1 220px; }
 </style>
 </head>
 <body>
@@ -60,6 +61,18 @@
   </section>
 
   <section class="danger">
+    <strong id="version"></strong>
+    <div class="row">
+      <button class="btn" id="check-update" type="button" data-i18n="settings_checkUpdate"></button>
+      <span id="update-status" aria-live="polite"></span>
+    </div>
+    <div class="row" id="update-download" hidden>
+      <a class="btn primary" id="download" target="_blank" rel="noopener"></a>
+      <small class="hint" id="update-hint"></small>
+    </div>
+  </section>
+
+  <section class="danger">
     <div class="row">
       <a class="btn" href="../dev/diagnose.html">Diagnose</a>
       <span class="field"><small data-i18n="settings_diagnoseHint"></small></span>
@@ -73,6 +86,7 @@
 <script src="../lib/api.js"></script>
 <script src="../lib/store.js"></script>
 <script src="../lib/i18n.js"></script>
+<script src="../lib/update.js"></script>
 <script src="options.js"></script>
 </body>
 </html>
