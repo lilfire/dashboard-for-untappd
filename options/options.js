@@ -43,8 +43,9 @@
       $('update-status').textContent = t('settings_upToDate');
     } else {
       $('update-status').textContent = t('settings_updateAvailable', r.latest);
-      $('download').href = r.url;
-      $('download').textContent = t('settings_download', r.latest);
+      // Firefox blokkerer .xpi åpnet direkte fra utvidelsen; klikket må skje på GitHub-siden.
+      $('download').href = isFirefox ? (r.pageUrl ?? r.url) : r.url;
+      $('download').textContent = t(isFirefox ? 'settings_openRelease' : 'settings_download', r.latest);
       $('update-hint').textContent = t(isFirefox ? 'settings_updateHintFirefox' : 'settings_updateHintChrome');
       $('update-download').hidden = false;
     }
