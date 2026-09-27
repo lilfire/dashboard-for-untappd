@@ -2,7 +2,7 @@
 
 Nettleserutvidelse for Firefox, Chrome og andre Chromium-baserte nettlesere, også på Android, som viser ditt eget Untappd-dashbord, hentet med innloggingen du allerede har i nettleseren.
 
-**Ikke tilknyttet Untappd.** Utvidelsen kontakter bare untappd.com, har ingen sporing og lagrer dataene bare i nettleseren din.
+**Ikke tilknyttet Untappd.** Utvidelsen kontakter bare untappd.com (og GitHub når du selv ser etter oppdatering), har ingen sporing og lagrer dataene bare i nettleseren din.
 
 ## Hva du får
 
@@ -61,7 +61,9 @@ merke. Hos vennene regnes derfor nivå 100 som maks, i tillegg til merker der du
 2. Gå til utvidelsessiden (`chrome://extensions`, `edge://extensions`, `vivaldi://extensions` eller `brave://extensions`), slå på **Utviklermodus** og trykk **Last inn upakket**
 3. Velg den utpakkede mappen
 
-Chrome-versjonen oppdateres ikke automatisk. Gjenta stegene når det kommer en ny versjon.
+Chrome-versjonen oppdateres ikke automatisk. Under **Innstillinger → Se etter oppdatering** ser du om det finnes en ny
+versjon, og får lenke til zip-filen. Pakk den ut over den gamle mappen og trykk **Last inn på nytt** på
+utvidelsessiden, så beholdes dataene.
 
 ### Mobil
 Chrome og Safari på mobil støtter ikke denne typen utvidelser. På Android fungerer disse:
@@ -76,7 +78,7 @@ Chrome og Safari på mobil støtter ikke denne typen utvidelser. På Android fun
 1. Last ned siste `dashboard-for-untappd-chrome-<versjon>.zip` fra [Releases](https://github.com/lilfire/dashboard-for-untappd/releases) og pakk den ut
 2. Gå til `chrome://extensions`, slå på **Utviklermodus** og trykk **Last inn upakket**
 3. Velg den utpakkede mappen
-4. Oppdateres ikke automatisk
+4. Oppdateres ikke automatisk, men **Innstillinger → Se etter oppdatering** viser om det finnes en ny versjon
 
 Vivaldi og Edge på Android installerer bare utvidelser fra sine egne butikker, og støttes derfor ikke.
 
@@ -87,6 +89,7 @@ Vivaldi og Edge på Android installerer bare utvidelser fra sine egne butikker, 
 3. Trykk **Oppdater** for ferske tall. Dataene oppdateres også automatisk når de er eldre enn 6 timer, og når du selv åpner ølsiden din på Untappd
 
 Under **Innstillinger** kan du velge brukernavn, språk og hvor ofte dataene skal oppdateres, og slette alle lagrede data.
+Der ser du også hvilken versjon du har, og kan se etter en nyere på GitHub.
 
 ### Feilsøking
 - **«Du er ikke logget inn»:** logg inn på untappd.com i samme nettleser og trykk Oppdater
