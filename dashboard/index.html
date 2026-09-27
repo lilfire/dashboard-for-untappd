@@ -190,38 +190,18 @@
         </div>
         <button class="btn primary" type="submit" data-i18n="compare_run"></button>
       </form>
+      <ul class="cmp-people" id="cmp-people" data-i18n-aria-label="compare_people" hidden></ul>
       <p class="meta" id="cmp-meta"></p>
       <p class="meta" id="cmp-friends-meta" aria-live="polite"></p>
       <div class="cmp-tasks" id="cmp-tasks">
-        <div class="cmp-task" id="cmp-task-history" hidden>
-          <div class="row"><strong class="task-label"></strong><span class="task-eta"></span></div>
-          <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i style="width:0%"></i></div>
-          <p class="meta task-detail"></p>
-        </div>
         <div class="cmp-task" id="cmp-task-checkins-me" hidden>
-          <div class="row"><strong class="task-label"></strong><span class="task-eta"></span></div>
-          <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i style="width:0%"></i></div>
-          <p class="meta task-detail"></p>
-        </div>
-        <div class="cmp-task" id="cmp-task-checkins-friend" hidden>
-          <div class="row"><strong class="task-label"></strong><span class="task-eta"></span></div>
-          <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i style="width:0%"></i></div>
-          <p class="meta task-detail"></p>
-        </div>
-        <div class="cmp-task countries" id="cmp-task-countries" hidden>
-          <div class="row"><strong class="task-label"></strong><span class="task-eta"></span></div>
-          <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i style="width:0%"></i></div>
-          <p class="meta task-detail"></p>
-        </div>
-        <div class="cmp-task" id="cmp-task-badges" hidden>
           <div class="row"><strong class="task-label"></strong><span class="task-eta"></span></div>
           <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i style="width:0%"></i></div>
           <p class="meta task-detail"></p>
         </div>
       </div>
       <div id="cmp-out" hidden>
-        <h3 class="cmp-kpis-title" id="cmp-kpis-title"></h3>
-        <section class="kpis" id="cmp-kpis"></section>
+        <div class="table-wrap"><table class="year-cmp cmp-kpis" id="cmp-kpis"></table></div>
         <div class="year-bar" id="cmp-year-bar">
           <select id="cmp-mode" data-i18n-aria-label="period_mode"></select>
           <select id="cmp-year-select" data-i18n-aria-label="cmpYears_year"></select>
@@ -269,6 +249,10 @@
         </section>
         <section class="cmp-scope" id="cmp-all-block" aria-labelledby="cmp-all-title" hidden>
           <h2 id="cmp-all-title" data-i18n="cmpYears_allYears"></h2>
+          <div class="segmented" id="cmp-all-metric" role="group" hidden>
+            <button type="button" data-metric="checkins" data-i18n="cmpYears_col_checkins"></button>
+            <button type="button" data-metric="new" data-i18n="cmpYears_col_new"></button>
+          </div>
           <div class="table-wrap"><table class="year-cmp" id="cmp-all-years"></table></div>
         </section>
       </div>

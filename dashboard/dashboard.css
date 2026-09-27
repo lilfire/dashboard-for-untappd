@@ -192,10 +192,15 @@ mark { background: var(--amber-soft); color: inherit; border-radius: 2px; }
 .chart .dot { fill: var(--amber); }
 .chart .end-label { fill: var(--ink); font-size: 12px; font-weight: 600; }
 .chart-empty { margin: 0; color: var(--muted); }
-.chart .line.theirs { stroke: #8BACE0; }
-.chart .dot.theirs { fill: #8BACE0; }
+.chart .line.p1 { stroke: var(--p1); } .chart .dot.p1 { fill: var(--p1); }
+.chart .line.p2 { stroke: var(--p2); } .chart .dot.p2 { fill: var(--p2); }
+.chart .line.p3 { stroke: var(--p3); } .chart .dot.p3 { fill: var(--p3); }
+.chart .line.p4 { stroke: var(--p4); } .chart .dot.p4 { fill: var(--p4); }
 
 /* Sammenlign */
+/* Én farge per person: du (p0) og opptil fire venner. */
+:root { --p0: var(--amber); --p1: #8BACE0; --p2: #B55D8A; --p3: #6B5FB5; --p4: #3C8C8C; --some: var(--muted); }
+@media (prefers-color-scheme: dark) { :root { --p2: #E391BA; --p3: #A99BF0; --p4: #6FC4C0; } }
 .cmp-summary { margin: 0; font-weight: 600; }
 .cmp-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 @media (max-width: 760px) { .cmp-cols { grid-template-columns: 1fr; } }
@@ -491,17 +496,25 @@ footer { padding-top: 22px; font-size: 11px; line-height: 1.8; }
 #panel-compare p:empty, #panel-compare .table-wrap:has(table:empty) { display: none; }
 #cmp-overlap { display: grid; gap: 18px; }
 .cmp-kpis-title { font-size: 16px; margin: 0 0 -10px; overflow-wrap: anywhere; }
-.cmp-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.cmp-stat { display: grid; gap: 10px; padding: 24px; border: 1px solid var(--line); border-top: 3px solid var(--amber); border-radius: 14px; background: var(--surface); overflow-wrap: anywhere; }
+.cmp-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
+.cmp-stat { display: grid; gap: 10px; padding: 24px; border: 1px solid var(--line); border-top: 3px solid var(--amber); border-radius: 14px; background: var(--surface); overflow-wrap: break-word; min-width: 0; align-content: start; }
 .cmp-stat.shared { border-top-color: var(--new); }
-.cmp-stat.theirs { border-top-color: #8BACE0; }
+.cmp-stat.some { border-top-color: var(--some); }
+.cmp-stat.p1 { border-top-color: var(--p1); }
+.cmp-stat.p2 { border-top-color: var(--p2); }
+.cmp-stat.p3 { border-top-color: var(--p3); }
+.cmp-stat.p4 { border-top-color: var(--p4); }
 .cmp-stat strong { font-size: 44px; letter-spacing: -.04em; line-height: 1.15; font-variant-numeric: tabular-nums; }
 .cmp-stat small { color: var(--muted); }
 button.cmp-stat { font: inherit; color: inherit; text-align: left; cursor: pointer; width: 100%; transition: background .15s, border-color .15s; }
 button.cmp-stat:hover { border-color: var(--muted); }
 .cmp-stat[aria-pressed="true"] { border-color: var(--amber); background: color-mix(in srgb, var(--amber) 12%, var(--surface)); }
 .cmp-stat.shared[aria-pressed="true"] { border-color: var(--new); background: color-mix(in srgb, var(--new) 12%, var(--surface)); }
-.cmp-stat.theirs[aria-pressed="true"] { border-color: #8BACE0; background: color-mix(in srgb, #8BACE0 16%, var(--surface)); }
+.cmp-stat.some[aria-pressed="true"] { border-color: var(--some); background: color-mix(in srgb, var(--some) 12%, var(--surface)); }
+.cmp-stat.p1[aria-pressed="true"] { border-color: var(--p1); background: color-mix(in srgb, var(--p1) 16%, var(--surface)); }
+.cmp-stat.p2[aria-pressed="true"] { border-color: var(--p2); background: color-mix(in srgb, var(--p2) 14%, var(--surface)); }
+.cmp-stat.p3[aria-pressed="true"] { border-color: var(--p3); background: color-mix(in srgb, var(--p3) 14%, var(--surface)); }
+.cmp-stat.p4[aria-pressed="true"] { border-color: var(--p4); background: color-mix(in srgb, var(--p4) 14%, var(--surface)); }
 .cmp-chart-card { display: grid; gap: 16px; padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); min-width: 0; }
 .cmp-chart-card h3 { font-size: 16px; margin: 0; }
 .cmp-overlap-track { height: 28px; border-radius: 7px; display: flex; overflow: hidden; background: var(--track); }
@@ -509,8 +522,35 @@ button.cmp-stat:hover { border-color: var(--muted); }
 .cmp-legend { display: flex; flex-wrap: wrap; gap: 12px 24px; font-size: 12px; }
 .cmp-legend span { overflow-wrap: anywhere; min-width: 0; }
 .cmp-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 7px; }
-.cmp-legend .mine, .cmp-overlap-track .mine, .cmp-legend .shared, .cmp-overlap-track .shared { background: var(--new); }
-.cmp-legend .theirs, .cmp-overlap-track .theirs, #panel-compare .cmp-cols { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+.cmp-legend .shared, .cmp-overlap-track .shared { background: var(--new); }
+.cmp-overlap-track .some { background: var(--some); }
+.cmp-legend .p0, .cmp-overlap-track .p0 { background: var(--p0); }
+.cmp-legend .p1, .cmp-overlap-track .p1 { background: var(--p1); }
+.cmp-legend .p2, .cmp-overlap-track .p2 { background: var(--p2); }
+.cmp-legend .p3, .cmp-overlap-track .p3 { background: var(--p3); }
+.cmp-legend .p4, .cmp-overlap-track .p4 { background: var(--p4); }
+#panel-compare .cmp-cols { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+/* Personene i sammenligningen */
+.cmp-people { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.cmp-people[hidden] { display: none; }
+.cmp-person { display: inline-flex; align-items: center; gap: 8px; min-width: 0; padding: 3px 3px 3px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: 13px; font-weight: 600; }
+.cmp-person span { min-width: 0; overflow-wrap: anywhere; }
+.cmp-person.pending { opacity: .6; }
+.cmp-person button { appearance: none; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; }
+.cmp-person button:hover, .cmp-person button:focus-visible { background: var(--track); color: var(--ink); }
+/* Én verdi per person i listene */
+#panel-compare .cmp-vals { display: flex; gap: 10px; flex-shrink: 0; margin-left: auto; color: var(--amber-ink); font-variant-numeric: tabular-nums; }
+/* Fast bredde i px, så overskriftene (mindre skrift) står rett over tallene. */
+#panel-compare .cmp-vals > span { width: 64px; text-align: right; color: inherit; white-space: nowrap; }
+/* Listen har 8px luft og et smalt rullefelt til høyre; overskriften flyttes like langt inn. */
+.cmp-head { display: flex; justify-content: flex-end; margin-bottom: -10px; padding-right: 18px; font-size: 11px; font-weight: 600; letter-spacing: .04em; }
+#panel-compare .cmp-head .cmp-vals { color: var(--muted); }
+.cmp-head .cmp-vals > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmp-head .cmp-vals > span::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 4px; border-radius: 50%; background: var(--p0); }
+.cmp-head .cmp-vals > .p1::before { background: var(--p1); }
+.cmp-head .cmp-vals > .p2::before { background: var(--p2); }
+.cmp-head .cmp-vals > .p3::before { background: var(--p3); }
+.cmp-head .cmp-vals > .p4::before { background: var(--p4); }
 #panel-compare .cmp-col { padding: 24px; background: var(--surface); border-radius: 16px; min-width: 0; gap: 18px; }
 #panel-compare .cmp-col h3 { font-size: 15px; align-items: baseline; overflow-wrap: anywhere; }
 #panel-compare .cmp-col h3 > span { flex-shrink: 0; }
@@ -534,8 +574,47 @@ button.cmp-stat:hover { border-color: var(--muted); }
 #panel-compare .year-cmp { table-layout: fixed; background: var(--surface); }
 #panel-compare .year-cmp th, #panel-compare .year-cmp td { padding: 16px; overflow-wrap: anywhere; line-height: 1.6; }
 #panel-compare .year-cmp th { background: var(--ground); }
+/* Brukernavn skrives som de er, med personens farge foran, og kortes ned med «…» når det er trangt.
+   Tabellene ruller aldri sidelengs. */
+#panel-compare .year-cmp th.cmp-name { text-transform: none; letter-spacing: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
+#panel-compare .year-cmp th.cmp-name::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 4px; border-radius: 50%; vertical-align: 1px; background: var(--p0); }
+#panel-compare .year-cmp th.cmp-name.p1::before { background: var(--p1); }
+#panel-compare .year-cmp th.cmp-name.p2::before { background: var(--p2); }
+#panel-compare .year-cmp th.cmp-name.p3::before { background: var(--p3); }
+#panel-compare .year-cmp th.cmp-name.p4::before { background: var(--p4); }
+#panel-compare #cmp-year-table.many th:first-child, #panel-compare #cmp-kpis.many th:first-child { width: 30%; }
+#panel-compare #cmp-all-years.many th:first-child { width: 14%; }
+/* «Felles for alle» får plass til hele ord i stedet for å brytes midt i ordet. */
+#panel-compare #cmp-all-years.many thead tr:first-child th:last-child { width: 19%; overflow-wrap: normal; text-transform: none; letter-spacing: 0; }
+.segmented[hidden] { display: none; }
+/* Forklaring med fulle navn øverst i tabellene når navnene i overskriftene kan bli kortet ned. */
+#panel-compare .year-cmp caption.cmp-names { caption-side: top; padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; background: var(--ground); border-bottom: 1px solid var(--line); }
+.cmp-names span { display: inline-flex; align-items: center; margin: 3px 16px 3px 0; overflow-wrap: anywhere; }
+div.cmp-names { font-size: 12px; font-weight: 600; margin-bottom: -6px; }
+/* Merket for en person: en prikk i personens farge. «Felles for alle» er grønn. */
+.cmp-key { display: inline-block; flex-shrink: 0; width: 10px; height: 10px; margin-right: 7px; border-radius: 50%; vertical-align: middle; background: var(--p0); }
+.cmp-key.p1 { background: var(--p1); } .cmp-key.p2 { background: var(--p2); } .cmp-key.p3 { background: var(--p3); } .cmp-key.p4 { background: var(--p4); }
+.cmp-key.shared { background: var(--new); }
+.cmp-person .cmp-key { margin-right: 0; }
+/* I kolonneoverskriftene står merket alene (eller «Du» med prikk), høyrejustert over tallene. */
+#panel-compare .year-cmp th.cmp-name.keyed::before, .cmp-head.keyed .cmp-vals > span::before { content: none; }
+#panel-compare .year-cmp th.cmp-name.keyed .cmp-key, .cmp-head.keyed .cmp-key { margin-right: 0; width: 12px; height: 12px; }
+#panel-compare .year-cmp th.cmp-shared { overflow-wrap: normal; }
+.cmp-head.keyed .cmp-vals > span { overflow: visible; }
+/* Tekstrader med flere enn to personer: radnavnet over, én linje per person under. */
+#panel-compare .year-cmp .cmp-text-row td { text-align: left; }
+.cmp-text-label { display: block; margin-bottom: 8px; }
+.cmp-text-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.cmp-text-list li { display: flex; align-items: center; gap: 10px; min-width: 0; line-height: 1.35; }
+.cmp-text-list .cmp-key { margin-right: 0; }
+.cmp-text-list li > span { min-width: 0; overflow-wrap: break-word; }
 @media (max-width: 700px) {
-  .cmp-metrics { gap: 8px; }
+  .cmp-metrics { gap: 8px; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); }
+  #panel-compare .cmp-vals { gap: 6px; font-size: 12px; }
+  /* Med mange kort: to i bredden, så hele navnet får plass. */
+  .cmp-metrics.many, .cmp-badges .cmp-metrics.many { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #panel-compare .cmp-vals > span { width: 46px; }
+  .cmp-head { padding-right: 0; }
   .cmp-stat { padding: 14px; }
   .cmp-stat strong { font-size: 30px; }
   .cmp-stat > span { font-size: 12px; }
@@ -569,11 +648,19 @@ button.cmp-stat:hover { border-color: var(--muted); }
 
 /* ---------- Merker i sammenligningen ---------- */
 .cmp-badges { display: grid; gap: 16px; min-width: 0; margin-top: 24px; }
-.cmp-badges-out { display: grid; gap: 16px; min-width: 0; }
+.cmp-badges-out { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
+/* Personene under et merke (dato eller nivå per person), som merker som brytes over flere linjer ved behov. */
+#panel-compare .cmp-badge-row, #panel-compare .cmp-badge-row > span:last-child, #panel-compare .cmp-badge-row .sub-line { white-space: normal; min-width: 0; }
+#panel-compare .cmp-col li > span.cmp-badge-row { flex: 1 1 auto; color: inherit; }
+.cmp-who { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 6px; }
+.cmp-who > span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.cmp-who .cmp-key { margin-right: 0; }
+.cmp-who-first { display: block; }
+.cmp-who-first .cmp-who { gap: 6px; }
 .cmp-badge-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .cmp-badge-row > span:last-child { min-width: 0; overflow-wrap: anywhere; }
 .cmp-badge-row img, .cmp-badge-row .ph { width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%; object-fit: cover; background: var(--track); }
-@media (max-width: 600px) { .cmp-badges .cmp-metrics { grid-template-columns: minmax(0, 1fr); } }
+
 
 /* ---------- Toppstripe og meny ---------- */
 .wrap.app { --gutter: 36px; padding: 0 var(--gutter) 40px; }
@@ -727,4 +814,19 @@ body.menu-open::after { content: ""; position: fixed; inset: 0; z-index: 25; bac
   .badge-tile img, .badge-tile .ph { width: 56px; height: 56px; }
   .badge-tile .name { font-size: 12px; }
   .badge-section > h2 { font-size: 18px; }
+}
+
+/* ---------- Fargeprikker bare på mobil ----------
+   Med flere enn to personer skrives både prikk og hele navn ut. Bred skjerm har plass til navnene,
+   så der skjules prikkene, forklaringen og mobilutgaven av tekstradene. Smal skjerm viser prikkene. */
+@media (min-width: 701px) {
+  #panel-compare .cmp-names, #panel-compare .cmp-narrow-row, #cmp-all-metric { display: none !important; }
+  #panel-compare th.cmp-name.keyed .cmp-key, #panel-compare .year-cmp td .cmp-key, .cmp-head.keyed .cmp-key, .cmp-who .cmp-key { display: none; }
+  #panel-compare .year-cmp th.cmp-name { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; }
+  #panel-compare .cmp-col.many .cmp-vals > span { width: 110px; }
+  .cmp-head.keyed .cmp-vals > span { white-space: normal; overflow-wrap: break-word; }
+  .cmp-who .cmp-fullname { font-weight: 600; margin-right: 6px; }
+}
+@media (max-width: 700px) {
+  #panel-compare .cmp-fullname, #panel-compare .cmp-wide-row, #panel-compare .year-cmp .cmp-alt { display: none; }
 }

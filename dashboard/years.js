@@ -1,4 +1,4 @@
-// Fanen «År»: årsoppsummering regnet ut fra hele ølhistorikken, og året side om side med en venn.
+// Fanen «År»: årsoppsummering regnet ut fra hele ølhistorikken, og året side om side med vennene.
 (function (root) {
   const { i18n, store, history, years: yearsLib } = root.DFU;
   const { html, raw, render } = root.DFU.html;
@@ -18,12 +18,16 @@
     // Visning: et helt år eller en valgfri periode for deg; sammenligningen kan også vise hele tiden.
     view: { mode: 'year', preset: 'weekend', from: null, to: null },
     cmpView: { mode: 'all', preset: 'weekend', from: null, to: null },
-    friend: { name: null, history: null, built: null },
-    friendSyncing: false,
-    friendController: null,
-    // Henting av innsjekkingsdatoer, for deg og for vennen.
-    checkins: { me: { name: null, running: false, error: null, controller: null }, friend: { name: null, running: false, error: null, controller: null } },
+    // Hva «Alle år» viser når flere enn to sammenlignes: 'checkins' eller 'new'.
+    allYearsMetric: 'checkins',
+    // Vennene i sammenligningen, i rekkefølgen de ble lagt til: navn → { name, history, built, syncing, controller, checkins }.
+    friends: new Map(),
+    // Henting av innsjekkingsdatoer for deg; vennenes ligger på hver venn.
+    checkins: { me: { name: null, running: false, error: null, controller: null } },
   };
+  const newJob = () => ({ name: null, running: false, error: null, controller: null });
+  const cmpTasks = () => $('cmp-tasks');
+  const taskFor = key => root.DFU.progress?.taskFor?.(cmpTasks(), key) ?? null;
 
   const rate = v => (v == null ? '–' : v.toLocaleString(i18n.locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
   const signed = v => (v == null ? '–' : (v > 0 ? '+' : '') + v.toLocaleString(i18n.locale(), { maximumFractionDigits: 2 }));
@@ -296,7 +300,7 @@
     const { from, to } = mine ? S.view : S.cmpView;
     const filter = b => yearsLib.needsDatesInRange(b, from, to);
     void syncCheckinDates('me', filter);
-    if (cmp) void syncCheckinDates('friend', filter);
+    if (cmp) for (const name of S.friends.keys()) void syncCheckinDates(name, filter);
   });
 
   function applyPreset(view, preset) {
@@ -357,24 +361,26 @@
     root.DFU.dashboardTrend?.();
     document.dispatchEvent(new CustomEvent('dfu:history'));
     if (!S.built.years.length && S.history?.beers?.length) $('y-summary').textContent = t('years_none');
-    if (S.friend.name) void syncCheckinDates('me');
+    if (S.friends.size) void syncCheckinDates('me');
   }
 
   // Henter datoene for innsjekkinger historikken ikke plasserer i et år, og lagrer dem på ølene.
-  // filter velger hvilke øl som trenger datoer; standard er øl som ikke kan plasseres i et år.
+  // who er 'me' eller navnet på en venn. filter velger hvilke øl som trenger datoer;
+  // standard er øl som ikke kan plasseres i et år.
   async function syncCheckinDates(who, filter = yearsLib.needsCheckinDates) {
-    const friend = who === 'friend';
-    const job = S.checkins[who];
-    const name = friend ? S.friend.name : S.user;
-    const record = () => (friend ? S.friend.history : S.history);
-    if (!name || (friend ? S.friendSyncing : S.syncing) || (job.running && job.name === name)) return;
+    const friend = who === 'me' ? null : S.friends.get(who);
+    if (who !== 'me' && !friend) return;
+    const job = friend ? friend.checkins : S.checkins.me;
+    const name = friend ? friend.name : S.user;
+    const record = () => (friend ? friend.history : S.history);
+    if (!name || (friend ? friend.syncing : S.syncing) || (job.running && job.name === name)) return;
     const wanted = (record()?.beers ?? []).filter(filter);
     if (!wanted.length) return;
     job.controller?.abort();
     const controller = new AbortController();
     Object.assign(job, { name, running: true, error: null, controller });
-    const current = () => job.controller === controller && (friend ? S.friend.name : S.user) === name;
-    const task = $(friend ? 'cmp-task-checkins-friend' : 'cmp-task-checkins-me');
+    const current = () => job.controller === controller && (friend ? S.friends.get(name) === friend : S.user === name);
+    const task = friend ? taskFor(`${name}|checkins`) : $('cmp-task-checkins-me');
     const eta = newEta();
     const show = p => {
       const { fraction, remainingMs } = eta.update(p.index, wanted.length);
@@ -392,7 +398,7 @@
       const beers = latest.beers.map(b => (dates[b.id] ? { ...b, checkinDates: dates[b.id] } : b));
       const saved = await store.saveHistory(name, { beers, complete: latest.complete, syncedAt: latest.syncedAt, format: latest.format });
       if (!current()) return;
-      if (friend) { S.friend.history = saved; S.friend.built = yearsLib.buildYears(saved.beers); } else { S.history = saved; S.built = yearsLib.buildYears(saved.beers); }
+      if (friend) { friend.history = saved; friend.built = yearsLib.buildYears(saved.beers); } else { S.history = saved; S.built = yearsLib.buildYears(saved.beers); }
       if (S.view.mode === 'period') renderYear();
       renderFriendCompare();
       if (S.cmpView.mode === 'period') scopeChanged();
@@ -478,69 +484,104 @@
     }
   }
 
-  /* ---------- Året side om side med en venn ---------- */
-  const win = (a, b, mode) => (mode === 'high' && typeof a === 'number' && typeof b === 'number' && a > b ? 'win' : '');
+  /* ---------- Deg og vennene side om side ---------- */
+  // Uthever høyeste tall, med mindre alle er like.
+  const winners = (values, mode) => (mode === 'high' ? yearsLib.leaders(values) : values.map(() => false)).map(w => (w ? 'win' : ''));
   const cell = v => (v == null ? '–' : typeof v === 'number' ? (Number.isInteger(v) ? num(v) : rate(v)) : v);
+  // Snitt vises alltid med to desimaler, så 8 og 7,70 står likt.
+  const asRate = ([label, values, mode]) => [label, values, mode, values.map(v => (v == null ? '–' : rate(v)))];
+  const cells = (values, mode, shown = values.map(cell), cls = '') => {
+    const w = winners(values, mode);
+    return shown.map((v, i) => html`<td class="${w[i]} ${cls}">${v}</td>`);
+  };
 
-  // Årene begge har øl fra, nyeste først.
-  function comparableYears() {
-    const all = new Set([...(S.built?.years ?? []).map(y => y.year), ...(S.friend.built?.years ?? []).map(y => y.year)]);
+  // Deg og vennene som har historikk, i samme rekkefølge som i sammenligningen.
+  // tone er personens farge (samme som i brikkene og kurven).
+  // Vennens navn fra vennelisten i sammenligningen, ellers brukernavnet.
+  const label = name => root.DFU.compare?.label?.(name) ?? name;
+  const people = () => [
+    { name: t('compare_you'), history: S.history, built: S.built, tone: 'p0' },
+    ...[...S.friends.values()].filter(f => f.built).map(f => ({ name: label(f.name), history: f.history, built: f.built, tone: root.DFU.compare?.tone?.(f.name) ?? '' })),
+  ];
+  // Kolonneoverskrift med navn og forklaringen med fulle navn, felles med resten av sammenligningen.
+  const nameHead = (p, many, cls) => root.DFU.compare?.nameHead?.(p, many, cls) ?? html`<th class="cmp-name ${p.tone} ${cls ?? ''}">${p.name}</th>`;
+  const fullName = text => root.DFU.compare?.fullName?.(text) ?? text;
+  const namesCaption = (ps, shared) => root.DFU.compare?.namesCaption?.(ps, shared) ?? '';
+  // Antall øl alle har. Med flere enn to personer heter raden «Felles for alle».
+  const sharedCount = lists => yearsLib.compareMany(lists).all.length;
+  const sharedLabel = (n, key) => (n > 2 ? t('compare_allShared') : t(key));
+  // «Felles for alle» har sin egen farge (grønn, som kortet), på linje med fargene til personene.
+  const sharedKey = html`<b class="cmp-key shared" aria-hidden="true"></b>`;
+  const sharedKeyHead = html`<b class="cmp-key shared" role="img" aria-label="${t('compare_allShared')}"></b>`;
+
+  // Tabell med én kolonne per person. Rader: [etikett, verdier, 'high' for å utheve høyeste, visning].
+  // Med flere enn to personer er det ikke plass til tekst (øl, stil, bryggeri) i hver sin smale kolonne.
+  // Tekstradene vises da som en liste under radnavnet, én linje per person med merket foran.
+  function cmpTable(head, ps, rows, [sharedText, shared]) {
+    const many = ps.length > 2;
+    const personKey = p => root.DFU.compare?.personKey?.(p) ?? p.name;
+    const textRow = (label, values) => html`<tr class="cmp-text-row cmp-narrow-row"><td colspan="${ps.length + 1}"><span class="cmp-text-label">${label}</span>
+      <ul class="cmp-text-list">${values.map((v, i) => html`<li>${personKey(ps[i])}<span>${cell(v)}</span></li>`)}</ul></td></tr>`;
+    $('cmp-year-table').classList.toggle('many', many);
+    render($('cmp-year-table'), html`${namesCaption(ps)}<thead><tr><th>${head}</th>${ps.map(p => nameHead(p, many))}</tr></thead>
+      <tbody>${rows.map(([label, values, mode, shown]) => {
+        // Tekst (øl, stil, bryggeri): vanlige kolonner på bred skjerm, liste under radnavnet på mobil.
+        const text = many && mode !== 'high';
+        const row = html`<tr class="${text ? 'cmp-wide-row' : ''}"><td>${label}</td>${cells(values, mode, shown)}</tr>`;
+        return text ? [row, textRow(label, values)] : row;
+      })}
+        <tr><td>${many ? sharedKey : ''}${sharedText}</td><td colspan="${ps.length}">${num(shared)}</td></tr></tbody>`);
+  }
+
+  // Årene noen av dere har øl fra, nyeste først.
+  function comparableYears(ps) {
+    const all = new Set(ps.flatMap(p => (p.built?.years ?? []).map(y => y.year)));
     return [...all].sort((a, b) => b - a);
   }
 
-  // Deg og vennen i en valgfri periode: nye øl og øl smakt igjen.
-  // Deg og vennen over hele historikken, med samme tabell som for et år eller en periode.
-  function renderFriendAll(name) {
-    const mine = yearsLib.allTimeStats(S.history?.beers ?? []);
-    const theirs = yearsLib.allTimeStats(S.friend.history?.beers ?? []);
-    const split = yearsLib.compareYear(S.history?.beers ?? [], S.friend.history?.beers ?? []);
-    const rows = [
-      [t('cmpYears_row_checkins'), mine.checkins, theirs.checkins, 'high'],
-      [t('kpi_unique'), mine.beers, theirs.beers, 'high'],
-      [t('kpi_breweries'), mine.breweries, theirs.breweries, 'high'],
-      [t('kpi_styles'), mine.styles, theirs.styles, 'high'],
-      [t('cmpYears_row_rated'), mine.ratedCount, theirs.ratedCount, 'high'],
-      [t('cmpYears_row_avgRating'), mine.avgRating, theirs.avgRating, 'high'],
-      [t('cmpYears_row_avgAbv'), mine.avgAbv, theirs.avgAbv, 'high'],
-      [t('cmpYears_row_strongest'), beerLink(mine.strongest), beerLink(theirs.strongest)],
-      [t('cmpYears_row_topStyle'), mine.topStyles[0]?.name ?? null, theirs.topStyles[0]?.name ?? null],
-      [t('cmpYears_row_topBrewery'), mine.topBreweries[0]?.name ?? null, theirs.topBreweries[0]?.name ?? null],
-    ];
-    render($('cmp-year-table'), html`<thead><tr><th>${t('period_mode_all')}</th><th>${t('compare_you')}</th><th>${name}</th></tr></thead>
-      <tbody>${rows.map(([label, a, b, mode]) => html`<tr><td>${label}</td>
-        <td class="${win(a, b, mode)}">${cell(a)}</td><td class="${win(b, a, mode)}">${cell(b)}</td></tr>`)}
-        <tr><td>${t('cmpAll_shared')}</td><td colspan="2">${num(split.both.length)}</td></tr></tbody>`);
+  // Deg og vennene over hele historikken, med samme tabell som for et år eller en periode.
+  function renderFriendAll(ps) {
+    const stats = ps.map(p => yearsLib.allTimeStats(p.history?.beers ?? []));
+    const row = (label, pick, mode) => [label, stats.map(pick), mode];
+    cmpTable(t('period_mode_all'), ps, [
+      row(t('cmpYears_row_checkins'), s => s.checkins, 'high'),
+      row(t('kpi_unique'), s => s.beers, 'high'),
+      row(t('kpi_breweries'), s => s.breweries, 'high'),
+      row(t('kpi_styles'), s => s.styles, 'high'),
+      row(t('cmpYears_row_rated'), s => s.ratedCount, 'high'),
+      asRate(row(t('cmpYears_row_avgRating'), s => s.avgRating, 'high')),
+      asRate(row(t('cmpYears_row_avgAbv'), s => s.avgAbv, 'high')),
+      row(t('cmpYears_row_strongest'), s => beerLink(s.strongest)),
+      row(t('cmpYears_row_topStyle'), s => s.topStyles[0]?.name ?? null),
+      row(t('cmpYears_row_topBrewery'), s => s.topBreweries[0]?.name ?? null),
+    ], [sharedLabel(ps.length, 'cmpAll_shared'), sharedCount(ps.map(p => p.history?.beers ?? []))]);
     $('cmp-year-note').textContent = '';
   }
 
-  function renderFriendPeriod(name, jobs, loading) {
-    const mine = yearsLib.periodStats(S.history?.beers ?? [], S.cmpView.from, S.cmpView.to);
-    const theirs = yearsLib.periodStats(S.friend.history?.beers ?? [], S.cmpView.from, S.cmpView.to);
-    if (!mine || !theirs) {
+  // Deg og vennene i en valgfri periode: nye øl og øl smakt igjen.
+  function renderFriendPeriod(ps, jobs, loading) {
+    const stats = ps.map(p => yearsLib.periodStats(p.history?.beers ?? [], S.cmpView.from, S.cmpView.to));
+    if (stats.some(s => !s)) {
       render($('cmp-year-table'), '');
       $('cmp-year-note').textContent = '';
       return;
     }
-    const split = yearsLib.compareYear(mine.list, theirs.list);
-    const rows = [
-      [t('card_periodBeers'), mine.beers, theirs.beers, 'high'],
-      [t('cmpYears_row_beers'), mine.freshCount, theirs.freshCount, 'high'],
-      [t('card_again'), mine.againCount, theirs.againCount, 'high'],
-      [t('cmpYears_row_breweries'), mine.breweries, theirs.breweries, 'high'],
-      [t('cmpYears_row_styles'), mine.styles, theirs.styles, 'high'],
-      [t('cmpYears_row_rated'), mine.ratedCount, theirs.ratedCount, 'high'],
-      [t('cmpYears_row_avgRating'), mine.avgRating, theirs.avgRating, 'high'],
-      [t('cmpYears_row_avgAbv'), mine.avgAbv, theirs.avgAbv, 'high'],
-      [t('cmpYears_row_strongest'), beerLink(mine.strongest), beerLink(theirs.strongest)],
-      [t('cmpYears_row_topStyle'), mine.topStyles[0]?.name ?? null, theirs.topStyles[0]?.name ?? null],
-      [t('cmpYears_row_topBrewery'), mine.topBreweries[0]?.name ?? null, theirs.topBreweries[0]?.name ?? null],
-    ];
-    render($('cmp-year-table'), html`<thead><tr><th>${rangeLabel(mine.from, mine.to)}</th><th>${t('compare_you')}</th><th>${name}</th></tr></thead>
-      <tbody>${rows.map(([label, a, b, mode]) => html`<tr><td>${label}</td>
-        <td class="${win(a, b, mode)}">${cell(a)}</td><td class="${win(b, a, mode)}">${cell(b)}</td></tr>`)}
-        <tr><td>${t('cmpPeriod_shared')}</td><td colspan="2">${num(split.both.length)}</td></tr></tbody>`);
+    const row = (label, pick, mode) => [label, stats.map(pick), mode];
+    cmpTable(rangeLabel(stats[0].from, stats[0].to), ps, [
+      row(t('card_periodBeers'), s => s.beers, 'high'),
+      row(t('cmpYears_row_beers'), s => s.freshCount, 'high'),
+      row(t('card_again'), s => s.againCount, 'high'),
+      row(t('cmpYears_row_breweries'), s => s.breweries, 'high'),
+      row(t('cmpYears_row_styles'), s => s.styles, 'high'),
+      row(t('cmpYears_row_rated'), s => s.ratedCount, 'high'),
+      asRate(row(t('cmpYears_row_avgRating'), s => s.avgRating, 'high')),
+      asRate(row(t('cmpYears_row_avgAbv'), s => s.avgAbv, 'high')),
+      row(t('cmpYears_row_strongest'), s => beerLink(s.strongest)),
+      row(t('cmpYears_row_topStyle'), s => s.topStyles[0]?.name ?? null),
+      row(t('cmpYears_row_topBrewery'), s => s.topBreweries[0]?.name ?? null),
+    ], [sharedLabel(ps.length, 'cmpPeriod_shared'), sharedCount(stats.map(s => s.list))]);
 
-    const uncertain = mine.uncertain + theirs.uncertain;
+    const uncertain = stats.reduce((sum, s) => sum + s.uncertain, 0);
     $('cmp-period-fetch').hidden = !uncertain || jobs.some(j => j.running);
     const errors = jobs.map(j => j.error).filter(Boolean);
     $('cmp-year-note').textContent = loading && jobs.some(j => j.running) ? t('period_fetching')
@@ -555,11 +596,11 @@
     return { mode: 'all' };
   }
 
-  // Ølene i valgt tid: hele historikken, nye øl i året, eller øl smakt i perioden.
+  // Ølene i valgt tid for 'me' eller en venn: hele historikken, nye øl i året, eller øl smakt i perioden.
   function cmpBeers(who) {
-    const friend = who === 'friend';
-    const record = friend ? S.friend.history : S.history;
-    const built = friend ? S.friend.built : S.built;
+    const friend = who === 'me' ? null : S.friends.get(who);
+    const record = friend ? friend.history : who === 'me' ? S.history : null;
+    const built = friend ? friend.built : who === 'me' ? S.built : null;
     const beers = record?.beers ?? [];
     const { mode } = S.cmpView;
     if (mode === 'year') return built?.byYear.get(S.cmpYear) ?? [];
@@ -570,101 +611,112 @@
   const scopeChanged = () => document.dispatchEvent(new CustomEvent('dfu:cmp-scope'));
 
   function renderFriendCompare() {
-    const name = S.friend.name;
-    if (!name || !$('cmp-year-bar')) return;
+    if (!S.friends.size || !$('cmp-year-bar')) return;
+    const friends = [...S.friends.values()];
+    const ps = people();
     const mode = S.cmpView.mode;
-    const years = comparableYears();
+    const years = comparableYears(ps);
     if (!years.includes(S.cmpYear)) S.cmpYear = years[0] ?? null;
     render($('cmp-year-select'), years.map(y => html`<option value="${y}"${y === S.cmpYear ? raw(' selected') : ''}>${y}</option>`));
     $('cmp-year-select').onchange = e => { S.cmpYear = Number(e.target.value); renderFriendCompare(); scopeChanged(); };
-    $('cmp-all-block').hidden = mode !== 'all' || !S.friend.built;
+    const ready = ps.length > 1;
+    $('cmp-all-block').hidden = mode !== 'all' || !ready;
 
-    if (!S.friend.built) {
-      if (S.friendSyncing) $('cmp-year-meta').textContent ||= t('cmpYears_loading', name);
+    // Fremdriften vises i oppgaveradene øverst; meldingsfeltet har bare feil og ventetekst.
+    const syncing = friends.filter(f => f.syncing && !f.built).map(f => label(f.name));
+    const errors = friends.filter(f => f.error).map(f => t('years_error', `${label(f.name)}: ${f.error}`));
+    $('cmp-year-meta').textContent = errors.length ? errors.join(' ') : !ready && syncing.length ? t('cmpYears_loading', syncing.join(', ')) : '';
+    if (!ready) {
       for (const id of ['cmp-year-table', 'cmp-all-years']) render($(id), '');
       $('cmp-year-note').textContent = '';
       $('cmp-period-fetch').hidden = true;
       return;
     }
-    // Fremdriften vises i oppgaveraden øverst, så meldingsfeltet kan tømmes.
-    $('cmp-year-meta').textContent = '';
 
     // Innsjekkinger og unike øl vises først når alle datoene for året er kjent.
     const yearCount = (built, key, year = S.cmpYear) => built?.[key]?.get(year) ?? { count: 0, pending: false };
-    const jobs = [S.checkins.me, S.checkins.friend];
-    const loading = jobs.some(j => j.running) || S.friendSyncing;
+    const jobs = [S.checkins.me, ...friends.map(f => f.checkins)];
+    const loading = jobs.some(j => j.running) || friends.some(f => f.syncing);
     const countCell = c => (c.pending ? (loading ? '…' : '–') : num(c.count));
     const known = c => (c.pending ? null : c.count);
     $('cmp-year-definitions').hidden = mode !== 'year';
     if (mode !== 'period') $('cmp-period-fetch').hidden = true;
-    if (mode === 'all') renderFriendAll(name);
-    else if (mode === 'period') renderFriendPeriod(name, jobs, loading);
+    if (mode === 'all') renderFriendAll(ps);
+    else if (mode === 'period') renderFriendPeriod(ps, jobs, loading);
     else if (mode === 'year') {
-      const mine = S.built?.years.find(y => y.year === S.cmpYear);
-      const theirs = S.friend.built.years.find(y => y.year === S.cmpYear);
-      const split = yearsLib.compareYear(S.built?.byYear.get(S.cmpYear) ?? [], S.friend.built.byYear.get(S.cmpYear) ?? []);
-
+      const ys = ps.map(p => p.built?.years.find(y => y.year === S.cmpYear));
       const months = new Intl.DateTimeFormat(i18n.locale(), { month: 'long' });
       const monthName = y => (y && y.beers ? months.format(new Date(2025, y.busiestMonth, 1)) : null);
       const countRow = (label, key) => {
-        const [a, b] = [yearCount(S.built, key), yearCount(S.friend.built, key)];
-        return [label, known(a), known(b), 'high', [countCell(a), countCell(b)]];
+        const c = ps.map(p => yearCount(p.built, key));
+        return [label, c.map(known), 'high', c.map(countCell)];
       };
-      const pending = ['checkins', 'unique'].some(key => yearCount(S.built, key).pending || yearCount(S.friend.built, key).pending);
-      const rows = [
+      const row = (label, pick, mode) => [label, ys.map(pick), mode];
+      const pending = ['checkins', 'unique'].some(key => ps.some(p => yearCount(p.built, key).pending));
+      cmpTable(S.cmpYear, ps, [
         countRow(t('cmpYears_row_checkins'), 'checkins'),
         countRow(t('cmpYears_row_unique'), 'unique'),
-        [t('cmpYears_row_beers'), mine?.beers ?? 0, theirs?.beers ?? 0, 'high'],
-        [t('cmpYears_row_breweries'), mine?.breweries ?? 0, theirs?.breweries ?? 0, 'high'],
-        [t('cmpYears_row_styles'), mine?.styles ?? 0, theirs?.styles ?? 0, 'high'],
-        [t('cmpYears_row_rated'), mine?.ratedCount ?? 0, theirs?.ratedCount ?? 0, 'high'],
-        [t('cmpYears_row_avgRating'), mine?.avgRating ?? null, theirs?.avgRating ?? null, 'high'],
-        [t('cmpYears_row_avgAbv'), mine?.avgAbv ?? null, theirs?.avgAbv ?? null, 'high'],
-        [t('cmpYears_row_strongest'), beerLink(mine?.strongest), beerLink(theirs?.strongest)],
-        [t('cmpYears_row_topStyle'), mine?.topStyles[0]?.name ?? null, theirs?.topStyles[0]?.name ?? null],
-        [t('cmpYears_row_topBrewery'), mine?.topBreweries[0]?.name ?? null, theirs?.topBreweries[0]?.name ?? null],
-        [t('cmpYears_row_busiestMonth'), monthName(mine), monthName(theirs)],
-      ];
-      render($('cmp-year-table'), html`<thead><tr><th>${S.cmpYear}</th><th>${t('compare_you')}</th><th>${name}</th></tr></thead>
-        <tbody>${rows.map(([label, a, b, mode, shown = [cell(a), cell(b)]]) => html`<tr><td>${label}</td>
-          <td class="${win(a, b, mode)}">${shown[0]}</td><td class="${win(b, a, mode)}">${shown[1]}</td></tr>`)}
-          <tr><td>${t('cmpYears_row_shared')}</td><td colspan="2">${num(split.both.length)}</td></tr></tbody>`);
-      const errors = jobs.map(j => j.error).filter(Boolean);
+        row(t('cmpYears_row_beers'), y => y?.beers ?? 0, 'high'),
+        row(t('cmpYears_row_breweries'), y => y?.breweries ?? 0, 'high'),
+        row(t('cmpYears_row_styles'), y => y?.styles ?? 0, 'high'),
+        row(t('cmpYears_row_rated'), y => y?.ratedCount ?? 0, 'high'),
+        asRate(row(t('cmpYears_row_avgRating'), y => y?.avgRating ?? null, 'high')),
+        asRate(row(t('cmpYears_row_avgAbv'), y => y?.avgAbv ?? null, 'high')),
+        row(t('cmpYears_row_strongest'), y => beerLink(y?.strongest)),
+        row(t('cmpYears_row_topStyle'), y => y?.topStyles[0]?.name ?? null),
+        row(t('cmpYears_row_topBrewery'), y => y?.topBreweries[0]?.name ?? null),
+        row(t('cmpYears_row_busiestMonth'), monthName),
+      ], [sharedLabel(ps.length, 'cmpYears_row_shared'), sharedCount(ps.map(p => p.built?.byYear.get(S.cmpYear) ?? []))]);
+      const jobErrors = jobs.map(j => j.error).filter(Boolean);
       $('cmp-year-note').textContent = !pending ? ''
         : loading ? t('cmpYears_checkinsLoading')
-        : errors.length ? t('years_error', errors.join(' · ')) : t('cmpYears_checkinsIncomplete');
+        : jobErrors.length ? t('years_error', jobErrors.join(' · ')) : t('cmpYears_checkinsIncomplete');
     }
 
     if (mode !== 'all') return;
-    const pair = (a, b, shown = [num(a), num(b)]) => html`<td class="${win(a, b, 'high')}">${shown[0]}</td><td class="${win(b, a, 'high')}">${shown[1]}</td>`;
-    render($('cmp-all-years'), html`<thead>
-        <tr><th rowspan="2">${t('cmpYears_year')}</th><th colspan="2">${t('cmpYears_col_checkins')}</th><th colspan="2">${t('cmpYears_col_new')}</th><th rowspan="2">${t('cmpYears_row_shared')}</th></tr>
-        <tr><th>${t('compare_you')}</th><th>${name}</th><th>${t('compare_you')}</th><th>${name}</th></tr></thead>
+    const n = ps.length;
+    // Med flere enn to personer viser mobil én ting om gangen (innsjekkinger eller nye øl), så tabellen passer
+    // i bredden. Begge skrives ut; det som ikke er valgt får klassen cmp-alt og skjules bare på smal skjerm.
+    const many = n > 2;
+    const metric = S.allYearsMetric;
+    const toggle = $('cmp-all-metric');
+    if (toggle) {
+      toggle.hidden = !many;
+      for (const b of toggle.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.metric === metric));
+    }
+    $('cmp-all-years').classList.toggle('many', many);
+    const checksAlt = many && metric !== 'checkins' ? 'cmp-alt' : '';
+    const newAlt = many && metric !== 'new' ? 'cmp-alt' : '';
+    render($('cmp-all-years'), html`${namesCaption(ps, sharedLabel(n, 'cmpYears_row_shared'))}<thead>
+        <tr><th rowspan="2">${t('cmpYears_year')}</th><th colspan="${n}" class="${checksAlt}">${t('cmpYears_col_checkins')}</th><th colspan="${n}" class="${newAlt}">${t('cmpYears_col_new')}</th>${many
+          ? html`<th rowspan="2" class="cmp-name keyed cmp-shared">${sharedKeyHead}${fullName(sharedLabel(n, 'cmpYears_row_shared'))}</th>`
+          : html`<th rowspan="2">${sharedLabel(n, 'cmpYears_row_shared')}</th>`}</tr>
+        <tr>${ps.map(p => nameHead(p, many, checksAlt))}${ps.map(p => nameHead(p, many, newAlt))}</tr></thead>
       <tbody>${years.map(y => {
-        const a = S.built?.years.find(x => x.year === y);
-        const b = S.friend.built.years.find(x => x.year === y);
-        const [ca, cb] = [yearCount(S.built, 'checkins', y), yearCount(S.friend.built, 'checkins', y)];
-        const both = yearsLib.compareYear(S.built?.byYear.get(y) ?? [], S.friend.built.byYear.get(y) ?? []).both.length;
-        return html`<tr><td>${y}</td>${pair(known(ca), known(cb), [countCell(ca), countCell(cb)])}
-          ${pair(a?.beers ?? 0, b?.beers ?? 0)}<td>${num(both)}</td></tr>`;
+        const c = ps.map(p => yearCount(p.built, 'checkins', y));
+        const fresh = ps.map(p => p.built?.years.find(x => x.year === y)?.beers ?? 0);
+        const shared = sharedCount(ps.map(p => p.built?.byYear.get(y) ?? []));
+        return html`<tr><td>${y}</td>${cells(c.map(known), 'high', c.map(countCell), checksAlt)}${cells(fresh, 'high', undefined, newAlt)}<td>${num(shared)}</td></tr>`;
       })}</tbody>`);
   }
 
-  // Henter vennens historikk. Egen henting bruker S.syncing, så de to blokkerer ikke hverandre.
-  async function syncFriend(name, stored, expected) {
+  // Henter historikken til en venn. Egen henting bruker S.syncing, så de to blokkerer ikke hverandre.
+  async function syncFriend(friend, stored, expected) {
+    const { name } = friend;
     const known = stored.beers;
     const full = history.needsFullSync(stored);
     const controller = new AbortController();
-    S.friendController = controller;
-    S.friendSyncing = true;
-    const current = () => S.friend.name === name && S.friendController === controller;
-    const task = $('cmp-task-history');
+    friend.controller = controller;
+    friend.syncing = true;
+    friend.error = null;
+    const current = () => S.friends.get(name) === friend && friend.controller === controller;
+    const task = taskFor(`${name}|history`);
     const eta = newEta();
     const totalPages = pageCount(expected);
     const show = p => {
       const { fraction, remainingMs } = eta.update(p.pages, totalPages);
       root.DFU.progress.showTask(task, {
-        label: t('cmpYears_loading', name),
+        label: t('cmpYears_loading', label(name)),
         detail: totalPages
           ? t('progress_historyDetail', num(Math.min(p.pages, totalPages)), num(totalPages), num(p.fetched))
           : t('years_syncing', num(p.pages), num(p.fetched)),
@@ -672,7 +724,6 @@
         eta: root.DFU.progress.formatEta(remainingMs, t),
       });
     };
-    $('cmp-year-meta').textContent = '';
     show({ pages: 0, fetched: 0 });
     renderFriendCompare();
     try {
@@ -681,26 +732,24 @@
         known, full, expected, signal: controller.signal,
         onProgress: p => { if (current() && !p.done) show(p); },
       });
-      // Avbrutt betyr at en annen venn er valgt. Da lagres ikke den halve hentingen.
+      // Avbrutt betyr at vennen er fjernet. Da lagres ikke den halve hentingen.
       if (res.stopped === 'aborted') return;
       const saved = await store.saveHistory(name, {
         beers: res.beers, complete: res.complete,
         format: full ? history.HISTORY_FORMAT : stored.format ?? null,
       });
       if (!current()) return;
-      S.friend.history = saved;
-      S.friend.built = yearsLib.buildYears(res.beers);
-      $('cmp-year-meta').textContent = '';
+      friend.history = saved;
+      friend.built = yearsLib.buildYears(res.beers);
     } catch (err) {
-      if (current()) $('cmp-year-meta').textContent = t('years_error', err.message);
+      if (current()) friend.error = err.message;
     } finally {
-      if (S.friendController === controller) {
+      if (friend.controller === controller) {
         root.DFU.progress.hideTask(task);
-        S.friendSyncing = false;
-        S.friendController = null;
+        friend.syncing = false;
+        friend.controller = null;
         renderFriendCompare();
         document.dispatchEvent(new CustomEvent('dfu:friend-history'));
-        void syncCheckinDates('friend');
       }
     }
   }
@@ -712,6 +761,13 @@
     setupPeriodControls(['y-mode', 'y-year', 'y-period', 'y-preset', 'y-from', 'y-to'], S.view, renderYear);
     setupPeriodControls(['cmp-mode', 'cmp-year-select', 'cmp-period', 'cmp-preset', 'cmp-from', 'cmp-to'], S.cmpView, () => { renderFriendCompare(); scopeChanged(); }, ['all', 'year', 'period']);
     document.addEventListener('dfu:badges', () => renderYear());
+    document.addEventListener('dfu:friend-names', () => renderFriendCompare());
+    $('cmp-all-metric')?.addEventListener('click', e => {
+      const b = e.target.closest('button[data-metric]');
+      if (!b) return;
+      S.allYearsMetric = b.dataset.metric;
+      renderFriendCompare();
+    });
     renderSync();
     void bootstrap();
   }
@@ -735,27 +791,22 @@
     build();
   }
 
-  // Kalles av sammenligningsfanen når en venn er hentet. Historikken hentes automatisk
-  // når den mangler, er ufullstendig, er gammel eller vennen har flere unike øl enn lagret.
-  // force (Oppdater-knappen) henter historikken selv om den er ny.
-  async function setFriend(name, expected = null, { force = false } = {}) {
-    if (S.friend.name !== name) {
-      S.friendController?.abort();
-      S.friendController = null;
-      S.friendSyncing = false;
-      root.DFU.progress.hideTask($('cmp-task-history'));
-      const job = S.checkins.friend;
-      job.controller?.abort();
-      Object.assign(job, { name: null, running: false, error: null, controller: null });
-      root.DFU.progress.hideTask($('cmp-task-checkins-friend'));
+  // Kalles av sammenligningen når en venn legges til eller hentes på nytt. Lagret historikk vises med en gang.
+  // Returnerer en funksjon som henter det som mangler: historikken når den mangler, er ufullstendig, er gammel
+  // eller vennen har flere unike øl enn lagret, og deretter innsjekkingsdatoene. Sammenligningen kjører den i
+  // køen sin, så det hentes for én venn om gangen. force (Oppdater-knappen) henter historikken selv om den er ny.
+  async function addFriend(name, expected = null, { force = false } = {}) {
+    let friend = S.friends.get(name);
+    if (!friend) {
+      friend = { name, history: null, built: null, syncing: false, controller: null, error: null, checkins: newJob() };
+      S.friends.set(name, friend);
     }
-    S.friend = { name, history: null, built: null };
-    if (!S.friendSyncing) $('cmp-year-meta').textContent = '';
     const [stored, settings] = await Promise.all([store.loadHistory(name), store.getSettings()]);
-    if (S.friend.name !== name) return;
-    if (stored.beers.length) {
-      S.friend.history = stored;
-      S.friend.built = yearsLib.buildYears(stored.beers);
+    const alive = () => S.friends.get(name) === friend;
+    if (!alive()) return async () => {};
+    if (stored.beers.length && !friend.syncing) {
+      friend.history = stored;
+      friend.built = yearsLib.buildYears(stored.beers);
     }
     renderFriendCompare();
     document.dispatchEvent(new CustomEvent('dfu:friend-history'));
@@ -763,10 +814,24 @@
       Date.now() - stored.syncedAt < settings.staleHours * 3600000 &&
       (expected == null || expected <= stored.count);
     void syncCheckinDates('me');
-    if (!fresh && !S.friendSyncing) void syncFriend(name, stored, expected);
-    else void syncCheckinDates('friend');
+    return async () => {
+      if (!alive()) return;
+      if (!fresh && !friend.syncing) await syncFriend(friend, stored, expected);
+      if (alive()) await syncCheckinDates(name);
+    };
+  }
+
+  // Tar en venn ut av sammenligningen og stopper hentingene for vennen.
+  function removeFriend(name) {
+    const friend = S.friends.get(name);
+    if (!friend) return;
+    S.friends.delete(name);
+    friend.controller?.abort();
+    friend.checkins.controller?.abort();
+    root.DFU.progress?.removeTasks?.(cmpTasks(), name);
+    renderFriendCompare();
   }
 
   root.DFU = root.DFU || {};
-  root.DFU.yearsView = { init, setUser, setFriend, cmpScope, cmpBeers, refresh: () => runSync(!S.history?.complete), state: S };
+  root.DFU.yearsView = { init, setUser, addFriend, removeFriend, cmpScope, cmpBeers, refresh: () => runSync(!S.history?.complete), state: S };
 })(globalThis);

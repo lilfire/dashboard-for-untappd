@@ -1,6 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { createEta, formatEta } = require('../lib/progress.js');
+const progress = require('../lib/progress.js');
+const { createEta, formatEta } = progress;
 
 const clock = () => {
   let at = 0;
@@ -42,4 +43,21 @@ test('formatEta rounds up to whole minutes', () => {
   assert.equal(formatEta(60000, t), 'eta_minutes:1');
   assert.equal(formatEta(61000, t), 'eta_minutes:2');
   assert.equal(formatEta(61 * 60000, t), 'eta_hours:1:1');
+});
+
+test('taskFor lager én oppgaverad per nøkkel, og removeTasks fjerner radene til én person', () => {
+  const { parseHTML } = require('linkedom');
+  const { document } = parseHTML('<div id="tasks"></div>');
+  const box = document.getElementById('tasks');
+  const a = progress.taskFor(box, 'anne|history');
+  assert.equal(progress.taskFor(box, 'anne|history'), a);
+  progress.taskFor(box, 'anne|countries', 'countries');
+  progress.taskFor(box, 'bob|history');
+  assert.equal(a.hidden, true);
+  progress.showTask(a, { label: 'Henter', fraction: 0.5 });
+  assert.equal(a.querySelector('.task-label').textContent, 'Henter');
+  assert.equal(a.hidden, false);
+  assert.equal(box.querySelector('[data-task="anne|countries"]').className, 'cmp-task countries');
+  progress.removeTasks(box, 'anne');
+  assert.deepEqual([...box.children].map(el => el.getAttribute('data-task')), ['bob|history']);
 });

@@ -94,6 +94,35 @@ test('compare: felles, bare du og bare vennen, med hvem som var først og den an
   assert.deepEqual(c.special.onlyThem.map(x => [x.id, x.other]), [['15', null]]);
 });
 
+test('compareMany: bøtter for alle, bare hver og noen, med hvem som var først', () => {
+  const mine = [
+    badge(1, 'Pioneer (Level 100)', { level: 100, date: '2026-08-01' }),
+    badge(2, 'Hjemme (Level 100)', { level: 100, date: '2025-01-01' }),
+    badge(4, 'IPA Day (2024)', { special: true, retired: true, date: '2024-08-07' }),
+  ];
+  const anne = [
+    badge(11, 'Pioneer (Level 100)', { level: 100, date: '2025-02-01' }),
+    badge(12, 'Hjemme (Level 47)', { level: 47 }),
+    badge(14, 'IPA Day (2024)', { special: true, retired: true, date: '2024-08-07' }),
+  ];
+  const bob = [
+    badge(21, 'Pioneer (Level 100)', { level: 100, date: '2024-05-01' }),
+    badge(23, 'Bar (Level 100)', { level: 100, date: '2023-01-01' }),
+  ];
+  const two = badges.compareMany(mine, [anne]);
+  assert.deepEqual(two.maxed.all.map(x => [x.name, x.first]), [['Pioneer', 1]]);
+  assert.deepEqual(two.maxed.only[0].map(x => [x.key, x.other[1]?.level]), [['hjemme', 47]]);
+  assert.deepEqual(two.maxed.some, []);
+  assert.deepEqual(two.special.all.map(x => x.first), ['same']);
+
+  const three = badges.compareMany(mine, [anne, bob]);
+  assert.deepEqual(three.maxed.all.map(x => [x.name, x.first]), [['Pioneer', 2]]);
+  assert.deepEqual(three.maxed.only.map(list => list.map(x => x.key)), [['hjemme'], [], ['bar']]);
+  assert.deepEqual(three.special.some.map(x => x.holders.map(Boolean)), [[true, true, false]]);
+  const tie = badges.compareMany(mine, [anne, [badge(31, 'Pioneer (Level 100)', { level: 100, date: '2025-02-01' })]]);
+  assert.deepEqual(tie.maxed.all.map(x => x.first), [[1, 2]], 'anne og den tredje delte tidligste dato');
+});
+
 test('inRange gir merker oppnådd i perioden, begge datoer med', () => {
   const list = [
     badge(1, 'IPA Day (2026)', { special: true, date: '2026-03-01' }),

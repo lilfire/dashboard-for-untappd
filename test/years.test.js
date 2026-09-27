@@ -78,6 +78,29 @@ test('sammenligner ett år mellom to personer', () => {
   assert.deepEqual(c.onlyTheirs.map(b => b.id), ['9']);
 });
 
+test('compareMany deler øl mellom flere personer i alle, bare hver og noen', () => {
+  const lists = [
+    [beer(1, '2025-02-01'), beer(2, '2025-03-01'), beer(3, '2025-03-02')],
+    [beer(2, '2025-04-01'), beer(3, '2025-04-02'), beer(9, '2025-05-01')],
+    [beer(3, '2025-06-01'), beer(8, '2025-06-02')],
+  ];
+  const c = years.compareMany(lists);
+  const ids = rows => rows.map(r => r.key);
+  assert.deepEqual(ids(c.all), ['3']);
+  assert.deepEqual(c.only.map(ids), [['1'], ['9'], ['8']]);
+  assert.deepEqual(ids(c.some), ['2']);
+  assert.deepEqual(c.some[0].items.map(b => b?.first ?? null), ['2025-03-01', '2025-04-01', null]);
+  const two = years.compareMany(lists.slice(0, 2));
+  assert.deepEqual([ids(two.all), two.only.map(ids), ids(two.some)], [['2', '3'], [['1'], ['9']], []]);
+});
+
+test('leaders uthever høyeste tall, men ikke når alle er like', () => {
+  assert.deepEqual(years.leaders([3, 5, 5, null]), [false, true, true, false]);
+  assert.deepEqual(years.leaders([4, 4]), [false, false]);
+  assert.deepEqual(years.leaders([4, null]), [false, false]);
+  assert.deepEqual(years.leaders(['a', 2, 1]), [false, true, false]);
+});
+
 test('monthBreakdown gir dager og øl for én måned', () => {
   const list = [beer(1, '2025-05-01'), beer(2, '2025-05-17'), beer(3, '2025-05-17'), beer(4, '2025-06-02'), beer(5, '2024-05-17')];
   const may = years.monthBreakdown(list, 2025, 4);

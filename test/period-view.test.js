@@ -69,6 +69,7 @@ test('sammenligningen: ett filter for hele tiden, år og periode', async () => {
   const histories = {
     me: [beer(1, '2025-06-13'), beer(2, '2024-03-01')],
     anne: [beer(1, '2025-07-01'), beer(3, '2024-05-01')],
+    bob: [beer(1, '2024-02-01'), beer(3, '2024-06-01'), beer(4, '2025-01-01')],
   };
   context.DFU.store = {
     loadHistory: async name => ({ beers: histories[name], count: histories[name].length, complete: true, syncedAt: Date.now() }),
@@ -76,11 +77,12 @@ test('sammenligningen: ett filter for hele tiden, år og periode', async () => {
   };
   context.DFU.history = {};
   context.DFU.progress = { hideTask() {} };
+  vm.runInContext(fs.readFileSync(require.resolve('../dashboard/compare.js'), 'utf8'), context);
   vm.runInContext(fs.readFileSync(require.resolve('../dashboard/years.js'), 'utf8'), context);
   const view = context.DFU.yearsView;
   view.init();
   await view.setUser('me', 2);
-  await view.setFriend('anne', 2);
+  await view.addFriend('anne', 2);
 
   const $ = id => document.getElementById(id);
   const set = (id, value) => {
@@ -95,7 +97,7 @@ test('sammenligningen: ett filter for hele tiden, år og periode', async () => {
   assert.equal(view.cmpScope().mode, 'all');
   assert.equal($('cmp-all-block').hidden, false);
   assert.equal($('cmp-year-select').hidden, true);
-  assert.deepEqual(ids(view.cmpBeers('friend')), ['1', '3']);
+  assert.deepEqual(ids(view.cmpBeers('anne')), ['1', '3']);
   const table = () => [...$('cmp-year-table').querySelectorAll('tr')].map(r => [...r.children].map(c => c.textContent.trim()));
   assert.deepEqual(table()[0], ['Hele tiden', 'Du', 'anne']);
   assert.deepEqual(table().find(r => r[0] === 'Unike øl'), ['Unike øl', '2', '2']);
@@ -114,6 +116,31 @@ test('sammenligningen: ett filter for hele tiden, år og periode', async () => {
   $('cmp-from').value = '2024-01-01';
   $('cmp-to').value = '2024-12-31';
   $('cmp-to').dispatchEvent(new Event('change'));
-  assert.deepEqual(ids(view.cmpBeers('friend')), ['3']);
+  assert.deepEqual(ids(view.cmpBeers('anne')), ['3']);
   assert.equal($('cmp-year-select').hidden, true);
+
+  // En venn til: én kolonne per person, høyeste tall uthevet og «Felles for alle».
+  await view.addFriend('bob', 3);
+  set('cmp-mode', 'all');
+  assert.deepEqual(table()[0], ['Hele tiden', 'Du', 'anne', 'bob'], 'hele navnet (bred skjerm), prikk ved siden av (mobil)');
+  assert.equal($('cmp-year-table').querySelectorAll('thead .cmp-key').length, 3);
+  assert.deepEqual([...$('cmp-year-table').querySelectorAll('caption span')].map(el => el.textContent), ['Du', 'anne', 'bob']);
+  assert.deepEqual(table().find(r => r[0] === 'Unike øl'), ['Unike øl', '2', '2', '3']);
+  const unique = [...$('cmp-year-table').querySelectorAll('tr')].find(r => r.firstElementChild.textContent === 'Unike øl');
+  assert.deepEqual([...unique.querySelectorAll('td')].map(td => td.className), ['', '', '', 'win']);
+  assert.deepEqual(table().at(-1), ['Felles for alle', '1']);
+  const allYears = [...$('cmp-all-years').querySelectorAll('thead tr')].map(r => [...r.children].map(c => c.textContent.trim()));
+  assert.deepEqual(allYears[0], ['År', 'Innsjekkinger', 'Nye øl', 'Felles for alle'], 'bred skjerm viser begge');
+  const alt = () => [...$('cmp-all-years').querySelectorAll('thead tr:first-child th')].map(th => th.classList.contains('cmp-alt'));
+  assert.deepEqual(alt(), [false, false, true, false], 'mobil skjuler nye øl til det velges');
+  assert.deepEqual([...$('cmp-all-years').querySelectorAll('thead .cmp-key')].map(k => k.getAttribute('aria-label')), ['Felles for alle', 'Du', 'anne', 'bob', 'Du', 'anne', 'bob']);
+  assert.deepEqual([...$('cmp-all-years').querySelectorAll('caption span')].map(el => el.textContent), ['Du', 'anne', 'bob', 'Felles for alle'], 'navnene og «Felles for alle» står i forklaringen');
+  assert.equal($('cmp-all-metric').hidden, false);
+  $('cmp-all-metric').querySelector('[data-metric="new"]').click();
+  assert.deepEqual(alt(), [false, true, false, false]);
+
+  view.removeFriend('bob');
+  assert.deepEqual(table()[0], ['Hele tiden', 'Du', 'anne']);
+  assert.deepEqual(table().at(-1), ['Felles øl', '1']);
+  assert.equal($('cmp-all-metric').hidden, true);
 });
