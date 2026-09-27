@@ -15,6 +15,9 @@
     year: null,
     syncing: false,
     controller: null,
+    // Visning: et helt år eller en valgfri periode for deg; sammenligningen kan også vise hele tiden.
+    view: { mode: 'year', preset: 'weekend', from: null, to: null },
+    cmpView: { mode: 'all', preset: 'weekend', from: null, to: null },
     friend: { name: null, history: null, built: null },
     friendSyncing: false,
     friendController: null,
@@ -77,14 +80,15 @@
     <ol>${items.map(x => html`<li><span>${name(x)}</span><b>${value(x)}</b></li>`)}</ol></div>`;
 
   /* ---------- Årskort ---------- */
-  function rankingDrilldown(y, kind) {
+  // list: ølene kortet gjelder (året eller perioden).
+  function rankingDrilldown(y, kind, list, hint = t('year_rankingHint')) {
     const styles = kind === 'styles';
     const items = styles ? y.topStyles : y.topBreweries;
     return html`<div class="card year-ranking-drilldown" data-ranking="${kind}">
       <span class="label">${t(styles ? 'card_topStyles' : 'card_topBreweries')}</span>
-      <span class="note">${t('year_rankingHint')}</span>
+      <span class="note">${hint}</span>
       <div>${items.map((item, index) => {
-        const beers = (S.built.byYear.get(y.year) ?? [])
+        const beers = list
           .filter(b => (styles ? b.style : b.breweryUrl || b.brewery || null) === item.key)
           .sort((a, b) => (b.ratingYou ?? -1) - (a.ratingYou ?? -1) || a.name.localeCompare(b.name));
         return html`<details class="year-rating-detail"><summary class="year-ranking-row">
@@ -97,8 +101,8 @@
       })}</div></div>`;
   }
 
-  function ratingDrilldown(y, count, bucket) {
-    const beers = (S.built.byYear.get(y.year) ?? [])
+  function ratingDrilldown(y, count, bucket, list, empty = t('year_ratingEmpty')) {
+    const beers = list
       .filter(b => b.ratingYou != null && b.ratingYou >= bucket &&
         (bucket === 4 ? b.ratingYou <= 5 : b.ratingYou < bucket + 1))
       .sort((a, b) => b.ratingYou - a.ratingYou || a.name.localeCompare(b.name));
@@ -107,18 +111,18 @@
       <span class="year-rating-chevron" aria-hidden="true">›</span></summary>
       <div class="year-rating-beers">${beers.length ? html`<ol>${beers.map(b => html`<li>
         <div>${beerLink(b)}<span class="sub-line">${b.brewery} · ${b.style}</span></div>
-        <b>${rate(b.ratingYou)} ★</b></li>`)}</ol>` : html`<p class="note">${t('year_ratingEmpty')}</p>`}</div>
+        <b>${rate(b.ratingYou)} ★</b></li>`)}</ol>` : html`<p class="note">${empty}</p>`}</div>
     </details>`;
   }
 
   // Spesialmerker og maks nivå nådd i året, fra merkefanen. Vises bare når det finnes noen.
-  function badgeSection(year) {
+  function badgeSection(from, to, title = 'year_badges') {
     const view = root.DFU.badgesView;
     if (!view || !root.DFU.badges) return '';
-    const { maxed, special } = root.DFU.badges.inYear(view.badges(), year, view.showOpts());
+    const { maxed, special } = root.DFU.badges.inRange(view.badges(), from, to, view.showOpts());
     if (!maxed.length && !special.length) return '';
-    return html`<section class="year-section" aria-labelledby="year_badges">
-      <h2 id="year_badges">${t('year_badges')}</h2>
+    return html`<section class="year-section" aria-labelledby="${title}">
+      <h2 id="${title}">${t(title)}</h2>
       <div class="card wide"><span class="note">${[
         special.length ? t(special.length === 1 ? 'year_badgesSpecialOne' : 'year_badgesSpecial', num(special.length)) : '',
         maxed.length ? t('year_badgesMaxed', num(maxed.length)) : '',
@@ -128,6 +132,7 @@
   }
 
   function renderYear() {
+    if (S.view.mode === 'period') { renderPeriod(); return; }
     const y = S.built?.years.find(x => x.year === S.year);
     if (!y) { render($('y-cards'), ''); return; }
     const cards = [
@@ -146,8 +151,8 @@
         <span class="note">${y.topRated[0] ? `${y.topRated[0].brewery} · ${rate(y.topRated[0].ratingYou)}` : '–'}</span></div>`,
       listCard(t('card_top5'), y.topRated, b => rate(b.ratingYou), '', beerLink),
       listCard(t('card_lowest'), y.lowestRated, b => rate(b.ratingYou), '', beerLink),
-      rankingDrilldown(y, 'styles'),
-      rankingDrilldown(y, 'breweries'),
+      rankingDrilldown(y, 'styles', S.built.byYear.get(y.year) ?? []),
+      rankingDrilldown(y, 'breweries', S.built.byYear.get(y.year) ?? []),
       html`<div class="card"><span class="label">${t('card_firstLast')}</span>
         <span class="note">${t('card_first', '')} ${beerLink(y.firstBeer)} · ${y.firstBeer ? i18n.date(y.firstBeer.first) : ''}</span>
         <span class="note">${t('card_last', '')} ${beerLink(y.lastBeer)} · ${y.lastBeer ? i18n.date(y.lastBeer.first) : ''}</span></div>`,
@@ -178,12 +183,161 @@
       section('year_activity', [months, month, weekdays], 'year-activity'),
       section('year_ratings', html`<div class="card"><span class="note">${t('year_ratingsNote', num(y.ratedCount), num(y.beers))}</span>
         <span class="note">${t('year_ratingHint')}</span>
-        <div class="year-rating-dist">${y.ratingBuckets.map((count, i) => ratingDrilldown(y, count, i))}</div>${y.ratedCount ? '' : html`<span class="note">${t('year_noRatings')}</span>`}</div>`, 'year-activity'),
-      badgeSection(y.year),
+        <div class="year-rating-dist">${y.ratingBuckets.map((count, i) => ratingDrilldown(y, count, i, S.built.byYear.get(y.year) ?? []))}</div>${y.ratedCount ? '' : html`<span class="note">${t('year_noRatings')}</span>`}</div>`, 'year-activity'),
+      badgeSection(`${y.year}-01-01`, `${y.year}-12-31`),
       section('year_favorites', [top, lowest, topStyles, topBreweries], 'year-rankings'),
       section('year_details', [favorite, firstLast, rating, abv], 'year-details'),
     ]);
     $('y-summary').textContent = t('year_summary', num(y.beers), num(y.breweries), num(y.styles));
+  }
+
+  /* ---------- Valgfri periode ---------- */
+  const rangeLabel = (from, to) => {
+    const f = new Intl.DateTimeFormat(i18n.locale(), { day: 'numeric', month: 'short', year: 'numeric' });
+    const [a, b] = [new Date(`${from}T12:00:00`), new Date(`${to}T12:00:00`)];
+    return from === to ? f.format(a) : (f.formatRange ? f.formatRange(a, b) : `${f.format(a)} – ${f.format(b)}`);
+  };
+
+  // Etiketter for søylene i en periode: ukedag og dato for korte perioder, dag i måneden ellers.
+  function periodLabels({ unit, keys }) {
+    const loc = i18n.locale();
+    if (unit === 'month') {
+      const spans = keys[0].slice(0, 4) !== keys.at(-1).slice(0, 4);
+      const f = new Intl.DateTimeFormat(loc, spans ? { month: 'short', year: '2-digit' } : { month: 'short' });
+      return keys.map(k => f.format(new Date(`${k}-15T12:00:00`)));
+    }
+    if (keys.length <= 14) {
+      const f = new Intl.DateTimeFormat(loc, { weekday: 'short', day: 'numeric' });
+      return keys.map(k => f.format(new Date(`${k}T12:00:00`)));
+    }
+    return keys.map((k, i) => {
+      const day = Number(k.slice(8, 10));
+      return i === 0 || day === 1 || day % 5 === 0 ? String(day) : '';
+    });
+  }
+
+  const periodTag = b => html`<span class="period-tag${b.again ? ' again' : ''}">${t(b.again ? 'period_tagAgain' : 'period_tagNew')}</span>`;
+
+  // Merknad om øl som kan ha vært drukket igjen i perioden, med knapp for å hente datoene.
+  function uncertainNote(count, jobs, id) {
+    const running = jobs.some(j => j.running);
+    if (!count && !running) return '';
+    const errors = jobs.map(j => j.error).filter(Boolean);
+    return html`<div class="card wide period-uncertain">
+      <span class="note">${running ? t('period_fetching') : t('period_uncertain', num(count))}</span>
+      ${errors.length && !running ? html`<span class="note">${t('years_error', errors.join(' · '))}</span>` : ''}
+      ${running ? '' : html`<div><button class="btn" type="button" id="${id}">${t('period_fetchDates')}</button></div>`}</div>`;
+  }
+
+  function renderPeriod() {
+    const p = yearsLib.periodStats(S.history?.beers ?? [], S.view.from, S.view.to);
+    if (!p) { render($('y-cards'), ''); $('y-summary').textContent = ''; return; }
+    const peak = p.beers ? p.days.counts.indexOf(Math.max(...p.days.counts)) : -1;
+    const section = (key, content, cls) => html`<section class="year-section" aria-labelledby="${key}">
+      <h2 id="${key}">${t(key)}</h2><div class="${cls}">${content}</div></section>`;
+    const top = p.topStyles[0];
+    const has = p.beers > 0;
+    render($('y-cards'), [
+      html`<header class="year-hero"><div><span class="year-eyebrow">${t('period_recap')}</span>
+        <h2>${t('year_headline', rangeLabel(p.from, p.to))}</h2><p>${t('period_intro')}</p>
+        <span class="year-scope">${t('period_note')}</span></div></header>`,
+      uncertainNote(p.uncertain, [S.checkins.me], 'y-fetch-dates'),
+      section('period_overview', [
+        html`<div class="card"><span class="label">${t('card_periodBeers')}</span><span class="value">${num(p.beers)}</span>
+          <span class="note">${t('period_activeDays', num(p.discoveryDays), num(p.length))}</span></div>`,
+        html`<div class="card"><span class="label">${t('card_newBeers')}</span><span class="value">${num(p.freshCount)}</span>
+          <span class="note">${t('period_freshNote')}</span></div>`,
+        html`<div class="card"><span class="label">${t('card_again')}</span><span class="value">${num(p.againCount)}</span>
+          <span class="note">${t('card_againNote')}</span></div>`,
+        html`<div class="card"><span class="label">${t('card_newBreweries')}</span><span class="value">${num(p.breweries)}</span>
+          <span class="note">${p.newBreweries.slice(0, 3).join(', ')}${p.newBreweries.length > 3 ? ' …' : ''}</span></div>`,
+        html`<div class="card"><span class="label">${t('card_newStyles')}</span><span class="value">${num(p.styles)}</span>
+          <span class="note">${p.newStyles.slice(0, 3).join(', ')}${p.newStyles.length > 3 ? ' …' : ''}</span></div>`,
+      ], 'year-metrics'),
+      has ? '' : html`<p class="note">${t('period_empty')}</p>`,
+      has ? section('period_activity', [
+        p.length > 1 ? html`<div class="card wide"><span class="label">${t(p.days.unit === 'month' ? 'card_periodMonths' : 'card_days')}</span>
+          ${bars(p.days.counts, periodLabels(p.days), peak, p.days.unit === 'month' ? 'months' : 'days')}</div>` : '',
+        p.length > 7 ? html`<div class="card wide"><span class="label">${t('card_periodWeekdays')}</span>${bars(p.weekdays, weekdayLabels(), p.busiestWeekday, 'weekdays')}</div>` : '',
+        html`<div class="card wide" id="y-period-list"><span class="label">${t('period_list')}</span>
+          <div class="table-wrap"><table class="list"><tbody>${p.list.map(b => html`<tr>
+            <td class="num">${i18n.date(`${b.seen}T12:00:00`, { day: 'numeric', month: 'short' })}</td>
+            <td>${beerLink(b)} ${periodTag(b)}<span class="sub-line">${b.brewery} · ${b.style}</span></td>
+            <td class="num">${rate(b.ratingYou)}</td></tr>`)}</tbody></table></div></div>`,
+      ], 'year-activity') : '',
+      has ? section('year_ratings', html`<div class="card"><span class="note">${t('period_ratingsNote', num(p.ratedCount), num(p.beers))}</span>
+        <span class="note">${t('year_ratingHint')}</span>
+        <div class="year-rating-dist">${p.ratingBuckets.map((count, i) => ratingDrilldown(p, count, i, p.list, t('period_ratingEmpty')))}</div>${p.ratedCount ? '' : html`<span class="note">${t('year_noRatings')}</span>`}</div>`, 'year-activity') : '',
+      badgeSection(p.from, p.to, 'period_badges'),
+      has ? section('year_favorites', [
+        listCard(t('period_top5'), p.topRated, b => rate(b.ratingYou), '', beerLink),
+        listCard(t('card_lowest'), p.lowestRated, b => rate(b.ratingYou), '', beerLink),
+        rankingDrilldown(p, 'styles', p.list, t('period_rankingHint')),
+        rankingDrilldown(p, 'breweries', p.list, t('period_rankingHint')),
+      ], 'year-rankings') : '',
+      has ? section('period_details', [
+        html`<div class="card year-spotlight"><span class="label">${t('period_signature')}</span>
+          <span class="value small">${top?.name ?? '–'}</span>
+          <span class="note">${top ? t('period_styleShare', num(top.count), num(Math.round(top.count / p.beers * 100))) : '–'}</span></div>`,
+        html`<div class="card"><span class="label">${t('card_avgRating')}</span><span class="value">${rate(p.avgRating)}</span>
+          <span class="note">${t('card_ratedOf', num(p.ratedCount), num(p.beers))}${p.generosity == null ? '' : ` · ${t('card_vsGlobal', signed(p.generosity))}`}</span></div>`,
+        html`<div class="card"><span class="label">${t('card_avgAbv')}</span><span class="value">${p.avgAbv == null ? '–' : `${p.avgAbv.toLocaleString(i18n.locale())} %`}</span>
+          <span class="note">${p.strongest ? t('card_strongest', '{0}', p.strongest.abv.toLocaleString(i18n.locale())).split('{0}').map((part, i) => html`${i ? beerLink(p.strongest) : ''}${part}`) : ''}</span></div>`,
+      ], 'year-details') : '',
+    ]);
+    $('y-summary').textContent = t('period_summary', num(p.beers), num(p.freshCount), num(p.againCount));
+  }
+
+  // Henter datoene for øl som kan ha vært drukket igjen i perioden.
+  document.addEventListener('click', e => {
+    const mine = e.target.closest?.('#y-fetch-dates');
+    const cmp = e.target.closest?.('#cmp-fetch-dates');
+    if (!mine && !cmp) return;
+    const { from, to } = mine ? S.view : S.cmpView;
+    const filter = b => yearsLib.needsDatesInRange(b, from, to);
+    void syncCheckinDates('me', filter);
+    if (cmp) void syncCheckinDates('friend', filter);
+  });
+
+  function applyPreset(view, preset) {
+    view.preset = preset;
+    const range = yearsLib.presetRange(preset);
+    if (range) Object.assign(view, range);
+  }
+
+  // Kobler velgeren for år eller periode. ids: modus, årsvelger, periodeboks, forhåndsvalg, fra, til.
+  function setupPeriodControls(ids, view, onChange, modes = ['year', 'period']) {
+    const [mode, year, box, preset, from, to] = ids.map($);
+    if (!mode) return;
+    render(mode, modes.map(m => html`<option value="${m}">${t(`period_mode_${m}`)}</option>`));
+    render(preset, [...yearsLib.PRESETS, 'custom'].map(p => html`<option value="${p}">${t(`period_preset_${p}`)}</option>`));
+    if (!view.from) applyPreset(view, view.preset);
+    const sync = () => {
+      mode.value = view.mode;
+      box.hidden = view.mode !== 'period';
+      year.hidden = view.mode !== 'year';
+      preset.value = view.preset;
+      // Datofeltene vises bare for en egendefinert periode.
+      for (const input of [from, to]) input.closest('label').hidden = view.preset !== 'custom';
+      from.value = view.from;
+      to.value = view.to;
+    };
+    const changed = () => { sync(); onChange(); };
+    mode.addEventListener('change', () => { view.mode = mode.value; changed(); });
+    preset.addEventListener('change', () => {
+      if (preset.value === 'custom') view.preset = 'custom';
+      else applyPreset(view, preset.value);
+      changed();
+    });
+    for (const input of [from, to]) {
+      input.addEventListener('change', () => {
+        if (!from.value || !to.value) return;
+        [view.from, view.to] = from.value <= to.value ? [from.value, to.value] : [to.value, from.value];
+        view.preset = 'custom';
+        changed();
+      });
+    }
+    sync();
   }
 
   function renderYearPicker() {
@@ -207,13 +361,14 @@
   }
 
   // Henter datoene for innsjekkinger historikken ikke plasserer i et år, og lagrer dem på ølene.
-  async function syncCheckinDates(who) {
+  // filter velger hvilke øl som trenger datoer; standard er øl som ikke kan plasseres i et år.
+  async function syncCheckinDates(who, filter = yearsLib.needsCheckinDates) {
     const friend = who === 'friend';
     const job = S.checkins[who];
     const name = friend ? S.friend.name : S.user;
     const record = () => (friend ? S.friend.history : S.history);
     if (!name || (friend ? S.friendSyncing : S.syncing) || (job.running && job.name === name)) return;
-    const wanted = (record()?.beers ?? []).filter(yearsLib.needsCheckinDates);
+    const wanted = (record()?.beers ?? []).filter(filter);
     if (!wanted.length) return;
     job.controller?.abort();
     const controller = new AbortController();
@@ -235,12 +390,15 @@
       const latest = record();
       if (!current() || !latest?.beers?.length) return;
       const beers = latest.beers.map(b => (dates[b.id] ? { ...b, checkinDates: dates[b.id] } : b));
-      const saved = await store.saveHistory(name, { beers, complete: latest.complete, syncedAt: latest.syncedAt });
+      const saved = await store.saveHistory(name, { beers, complete: latest.complete, syncedAt: latest.syncedAt, format: latest.format });
       if (!current()) return;
       if (friend) { S.friend.history = saved; S.friend.built = yearsLib.buildYears(saved.beers); } else { S.history = saved; S.built = yearsLib.buildYears(saved.beers); }
+      if (S.view.mode === 'period') renderYear();
       renderFriendCompare();
+      if (S.cmpView.mode === 'period') scopeChanged();
     };
     show({ index: 0, pages: 0 });
+    if (S.view.mode === 'period') renderYear();
     renderFriendCompare();
     try {
       const res = await history.syncCheckins(name, {
@@ -257,6 +415,7 @@
         job.running = false;
         job.controller = null;
         root.DFU.progress.hideTask(task);
+        if (S.view.mode === 'period') renderYear();
         renderFriendCompare();
       }
     }
@@ -308,7 +467,7 @@
         $('y-sync-text').textContent = t('years_error', `tomt svar (${res.via ?? '?'}, ${res.pages} sider, ${res.stopped})`);
         return;
       }
-      S.history = await store.saveHistory(S.user, { beers: res.beers, complete: res.complete && res.stopped !== 'aborted' });
+      S.history = await store.saveHistory(S.user, { beers: res.beers, complete: res.complete && res.stopped !== 'aborted', format: history.HISTORY_FORMAT });
       S.syncing = false;
       build();
       if (res.stopped === 'aborted') $('y-sync-text').textContent = t('years_aborted');
@@ -320,11 +479,8 @@
   }
 
   /* ---------- Året side om side med en venn ---------- */
+  const win = (a, b, mode) => (mode === 'high' && typeof a === 'number' && typeof b === 'number' && a > b ? 'win' : '');
   const cell = v => (v == null ? '–' : typeof v === 'number' ? (Number.isInteger(v) ? num(v) : rate(v)) : v);
-  const beerList = (title, beers, value) => html`<section class="cmp-col">
-    <h3>${title} <span>${num(beers.length)}</span></h3>
-    <ol>${beers.slice(0, 200).map(b => html`<li><span>${beerLink(b)}</span><span>${value(b)}</span></li>`)}
-      ${beers.length > 200 ? html`<li><span>… +${num(beers.length - 200)}</span><span></span></li>` : ''}</ol></section>`;
 
   // Årene begge har øl fra, nyeste først.
   function comparableYears() {
@@ -332,90 +488,154 @@
     return [...all].sort((a, b) => b - a);
   }
 
-  function renderFriendCompare() {
-    const box = $('cmp-years');
-    if (!box) return;
-    const name = S.friend.name;
-    box.hidden = !name;
-    if (!name) return;
+  // Deg og vennen i en valgfri periode: nye øl og øl smakt igjen.
+  // Deg og vennen over hele historikken, med samme tabell som for et år eller en periode.
+  function renderFriendAll(name) {
+    const mine = yearsLib.allTimeStats(S.history?.beers ?? []);
+    const theirs = yearsLib.allTimeStats(S.friend.history?.beers ?? []);
+    const split = yearsLib.compareYear(S.history?.beers ?? [], S.friend.history?.beers ?? []);
+    const rows = [
+      [t('cmpYears_row_checkins'), mine.checkins, theirs.checkins, 'high'],
+      [t('kpi_unique'), mine.beers, theirs.beers, 'high'],
+      [t('kpi_breweries'), mine.breweries, theirs.breweries, 'high'],
+      [t('kpi_styles'), mine.styles, theirs.styles, 'high'],
+      [t('cmpYears_row_rated'), mine.ratedCount, theirs.ratedCount, 'high'],
+      [t('cmpYears_row_avgRating'), mine.avgRating, theirs.avgRating, 'high'],
+      [t('cmpYears_row_avgAbv'), mine.avgAbv, theirs.avgAbv, 'high'],
+      [t('cmpYears_row_strongest'), beerLink(mine.strongest), beerLink(theirs.strongest)],
+      [t('cmpYears_row_topStyle'), mine.topStyles[0]?.name ?? null, theirs.topStyles[0]?.name ?? null],
+      [t('cmpYears_row_topBrewery'), mine.topBreweries[0]?.name ?? null, theirs.topBreweries[0]?.name ?? null],
+    ];
+    render($('cmp-year-table'), html`<thead><tr><th>${t('period_mode_all')}</th><th>${t('compare_you')}</th><th>${name}</th></tr></thead>
+      <tbody>${rows.map(([label, a, b, mode]) => html`<tr><td>${label}</td>
+        <td class="${win(a, b, mode)}">${cell(a)}</td><td class="${win(b, a, mode)}">${cell(b)}</td></tr>`)}
+        <tr><td>${t('cmpAll_shared')}</td><td colspan="2">${num(split.both.length)}</td></tr></tbody>`);
+    $('cmp-year-note').textContent = '';
+  }
 
-    if (!S.friend.built) {
-      if (S.friendSyncing) $('cmp-year-meta').textContent ||= t('cmpYears_loading', name);
-      $('cmp-year-bar').hidden = true;
-      $('cmp-all-title').hidden = true;
-      if ($('cmp-year-chart')) render($('cmp-year-chart'), '');
-      for (const id of ['cmp-year-table', 'cmp-year-cols', 'cmp-all-years']) render($(id), '');
+  function renderFriendPeriod(name, jobs, loading) {
+    const mine = yearsLib.periodStats(S.history?.beers ?? [], S.cmpView.from, S.cmpView.to);
+    const theirs = yearsLib.periodStats(S.friend.history?.beers ?? [], S.cmpView.from, S.cmpView.to);
+    if (!mine || !theirs) {
+      render($('cmp-year-table'), '');
       $('cmp-year-note').textContent = '';
       return;
     }
+    const split = yearsLib.compareYear(mine.list, theirs.list);
+    const rows = [
+      [t('card_periodBeers'), mine.beers, theirs.beers, 'high'],
+      [t('cmpYears_row_beers'), mine.freshCount, theirs.freshCount, 'high'],
+      [t('card_again'), mine.againCount, theirs.againCount, 'high'],
+      [t('cmpYears_row_breweries'), mine.breweries, theirs.breweries, 'high'],
+      [t('cmpYears_row_styles'), mine.styles, theirs.styles, 'high'],
+      [t('cmpYears_row_rated'), mine.ratedCount, theirs.ratedCount, 'high'],
+      [t('cmpYears_row_avgRating'), mine.avgRating, theirs.avgRating, 'high'],
+      [t('cmpYears_row_avgAbv'), mine.avgAbv, theirs.avgAbv, 'high'],
+      [t('cmpYears_row_strongest'), beerLink(mine.strongest), beerLink(theirs.strongest)],
+      [t('cmpYears_row_topStyle'), mine.topStyles[0]?.name ?? null, theirs.topStyles[0]?.name ?? null],
+      [t('cmpYears_row_topBrewery'), mine.topBreweries[0]?.name ?? null, theirs.topBreweries[0]?.name ?? null],
+    ];
+    render($('cmp-year-table'), html`<thead><tr><th>${rangeLabel(mine.from, mine.to)}</th><th>${t('compare_you')}</th><th>${name}</th></tr></thead>
+      <tbody>${rows.map(([label, a, b, mode]) => html`<tr><td>${label}</td>
+        <td class="${win(a, b, mode)}">${cell(a)}</td><td class="${win(b, a, mode)}">${cell(b)}</td></tr>`)}
+        <tr><td>${t('cmpPeriod_shared')}</td><td colspan="2">${num(split.both.length)}</td></tr></tbody>`);
 
+    const uncertain = mine.uncertain + theirs.uncertain;
+    $('cmp-period-fetch').hidden = !uncertain || jobs.some(j => j.running);
+    const errors = jobs.map(j => j.error).filter(Boolean);
+    $('cmp-year-note').textContent = loading && jobs.some(j => j.running) ? t('period_fetching')
+      : uncertain ? [t('period_uncertain', num(uncertain)), errors.length ? t('years_error', errors.join(' · ')) : ''].filter(Boolean).join(' ') : '';
+  }
+
+  // Tidsfilteret i sammenligningen: hele tiden, ett år eller en periode.
+  function cmpScope() {
+    const { mode, from, to } = S.cmpView;
+    if (mode === 'year') return { mode, year: S.cmpYear, from: `${S.cmpYear}-01-01`, to: `${S.cmpYear}-12-31` };
+    if (mode === 'period') return { mode, from, to };
+    return { mode: 'all' };
+  }
+
+  // Ølene i valgt tid: hele historikken, nye øl i året, eller øl smakt i perioden.
+  function cmpBeers(who) {
+    const friend = who === 'friend';
+    const record = friend ? S.friend.history : S.history;
+    const built = friend ? S.friend.built : S.built;
+    const beers = record?.beers ?? [];
+    const { mode } = S.cmpView;
+    if (mode === 'year') return built?.byYear.get(S.cmpYear) ?? [];
+    if (mode === 'period') return yearsLib.periodStats(beers, S.cmpView.from, S.cmpView.to)?.list ?? [];
+    return beers;
+  }
+
+  const scopeChanged = () => document.dispatchEvent(new CustomEvent('dfu:cmp-scope'));
+
+  function renderFriendCompare() {
+    const name = S.friend.name;
+    if (!name || !$('cmp-year-bar')) return;
+    const mode = S.cmpView.mode;
     const years = comparableYears();
     if (!years.includes(S.cmpYear)) S.cmpYear = years[0] ?? null;
+    render($('cmp-year-select'), years.map(y => html`<option value="${y}"${y === S.cmpYear ? raw(' selected') : ''}>${y}</option>`));
+    $('cmp-year-select').onchange = e => { S.cmpYear = Number(e.target.value); renderFriendCompare(); scopeChanged(); };
+    $('cmp-all-block').hidden = mode !== 'all' || !S.friend.built;
+
+    if (!S.friend.built) {
+      if (S.friendSyncing) $('cmp-year-meta').textContent ||= t('cmpYears_loading', name);
+      for (const id of ['cmp-year-table', 'cmp-all-years']) render($(id), '');
+      $('cmp-year-note').textContent = '';
+      $('cmp-period-fetch').hidden = true;
+      return;
+    }
     // Fremdriften vises i oppgaveraden øverst, så meldingsfeltet kan tømmes.
     $('cmp-year-meta').textContent = '';
-    $('cmp-year-bar').hidden = false;
-    $('cmp-all-title').hidden = false;
-    render($('cmp-year-select'), years.map(y => html`<option value="${y}"${y === S.cmpYear ? raw(' selected') : ''}>${y}</option>`));
-    $('cmp-year-select').onchange = e => { S.cmpYear = Number(e.target.value); renderFriendCompare(); };
 
-    const mine = S.built?.years.find(y => y.year === S.cmpYear);
-    const theirs = S.friend.built.years.find(y => y.year === S.cmpYear);
-    const split = yearsLib.compareYear(S.built?.byYear.get(S.cmpYear) ?? [], S.friend.built.byYear.get(S.cmpYear) ?? []);
-    $('cmp-year-summary').textContent = t('compare_summary', num(split.both.length), num(split.onlyMine.length), num(split.onlyTheirs.length), name);
-
-    const monthly = Array.from({ length: 12 }, (_, i) => [mine?.months[i] ?? 0, theirs?.months[i] ?? 0]);
-    const maxMonthly = Math.max(1, ...monthly.flat());
-    if ($('cmp-year-chart')) render($('cmp-year-chart'), html`<section class="cmp-chart-card">
-      <h3>${t('compare_monthly')}</h3><p class="meta">${t('years_note')}</p>
-      <div class="cmp-legend"><span><i class="mine"></i>${t('compare_you')}</span><span><i class="theirs"></i>${name}</span></div>
-      <div class="cmp-months">${monthly.map(([a, b], i) => html`<div class="cmp-month">
-        <span class="cmp-month-label">${monthLabels()[i]}</span>
-        <div class="cmp-pair"><div><span class="cmp-meter" aria-hidden="true"><i class="mine" style="width:${a / maxMonthly * 100}%"></i></span><b aria-label="${t('compare_you')}: ${num(a)}">${num(a)}</b></div>
-        <div><span class="cmp-meter" aria-hidden="true"><i class="theirs" style="width:${b / maxMonthly * 100}%"></i></span><b aria-label="${name}: ${num(b)}">${num(b)}</b></div></div>
-      </div>`)}</div></section>`);
-    const months = new Intl.DateTimeFormat(i18n.locale(), { month: 'long' });
-    const monthName = y => (y && y.beers ? months.format(new Date(2025, y.busiestMonth, 1)) : null);
     // Innsjekkinger og unike øl vises først når alle datoene for året er kjent.
     const yearCount = (built, key, year = S.cmpYear) => built?.[key]?.get(year) ?? { count: 0, pending: false };
     const jobs = [S.checkins.me, S.checkins.friend];
     const loading = jobs.some(j => j.running) || S.friendSyncing;
     const countCell = c => (c.pending ? (loading ? '…' : '–') : num(c.count));
     const known = c => (c.pending ? null : c.count);
-    const countRow = (label, key) => {
-      const [a, b] = [yearCount(S.built, key), yearCount(S.friend.built, key)];
-      return [label, known(a), known(b), 'high', [countCell(a), countCell(b)]];
-    };
-    const pending = ['checkins', 'unique'].some(key => yearCount(S.built, key).pending || yearCount(S.friend.built, key).pending);
-    const rows = [
-      countRow(t('cmpYears_row_checkins'), 'checkins'),
-      countRow(t('cmpYears_row_unique'), 'unique'),
-      [t('cmpYears_row_beers'), mine?.beers ?? 0, theirs?.beers ?? 0, 'high'],
-      [t('cmpYears_row_breweries'), mine?.breweries ?? 0, theirs?.breweries ?? 0, 'high'],
-      [t('cmpYears_row_styles'), mine?.styles ?? 0, theirs?.styles ?? 0, 'high'],
-      [t('cmpYears_row_rated'), mine?.ratedCount ?? 0, theirs?.ratedCount ?? 0, 'high'],
-      [t('cmpYears_row_avgRating'), mine?.avgRating ?? null, theirs?.avgRating ?? null, 'high'],
-      [t('cmpYears_row_avgAbv'), mine?.avgAbv ?? null, theirs?.avgAbv ?? null, 'high'],
-      [t('cmpYears_row_strongest'), beerLink(mine?.strongest), beerLink(theirs?.strongest)],
-      [t('cmpYears_row_topStyle'), mine?.topStyles[0]?.name ?? null, theirs?.topStyles[0]?.name ?? null],
-      [t('cmpYears_row_topBrewery'), mine?.topBreweries[0]?.name ?? null, theirs?.topBreweries[0]?.name ?? null],
-      [t('cmpYears_row_busiestMonth'), monthName(mine), monthName(theirs)],
-    ];
-    const win = (a, b, mode) => (mode === 'high' && typeof a === 'number' && typeof b === 'number' && a > b ? 'win' : '');
-    render($('cmp-year-table'), html`<thead><tr><th>${S.cmpYear}</th><th>${t('compare_you')}</th><th>${name}</th></tr></thead>
-      <tbody>${rows.map(([label, a, b, mode, shown = [cell(a), cell(b)]]) => html`<tr><td>${label}</td>
-        <td class="${win(a, b, mode)}">${shown[0]}</td><td class="${win(b, a, mode)}">${shown[1]}</td></tr>`)}
-        <tr><td>${t('cmpYears_row_shared')}</td><td colspan="2">${num(split.both.length)}</td></tr></tbody>`);
-    const errors = jobs.map(j => j.error).filter(Boolean);
-    $('cmp-year-note').textContent = !pending ? ''
-      : loading ? t('cmpYears_checkinsLoading')
-      : errors.length ? t('years_error', errors.join(' · ')) : t('cmpYears_checkinsIncomplete');
+    $('cmp-year-definitions').hidden = mode !== 'year';
+    if (mode !== 'period') $('cmp-period-fetch').hidden = true;
+    if (mode === 'all') renderFriendAll(name);
+    else if (mode === 'period') renderFriendPeriod(name, jobs, loading);
+    else if (mode === 'year') {
+      const mine = S.built?.years.find(y => y.year === S.cmpYear);
+      const theirs = S.friend.built.years.find(y => y.year === S.cmpYear);
+      const split = yearsLib.compareYear(S.built?.byYear.get(S.cmpYear) ?? [], S.friend.built.byYear.get(S.cmpYear) ?? []);
 
-    render($('cmp-year-cols'), [
-      beerList(t('compare_both'), split.both, b => rate(b.ratingYou)),
-      beerList(t('compare_onlyMe'), split.onlyMine, b => rate(b.ratingYou)),
-      beerList(t('compare_onlyThem', name), split.onlyTheirs, b => rate(b.ratingYou)),
-    ]);
+      const months = new Intl.DateTimeFormat(i18n.locale(), { month: 'long' });
+      const monthName = y => (y && y.beers ? months.format(new Date(2025, y.busiestMonth, 1)) : null);
+      const countRow = (label, key) => {
+        const [a, b] = [yearCount(S.built, key), yearCount(S.friend.built, key)];
+        return [label, known(a), known(b), 'high', [countCell(a), countCell(b)]];
+      };
+      const pending = ['checkins', 'unique'].some(key => yearCount(S.built, key).pending || yearCount(S.friend.built, key).pending);
+      const rows = [
+        countRow(t('cmpYears_row_checkins'), 'checkins'),
+        countRow(t('cmpYears_row_unique'), 'unique'),
+        [t('cmpYears_row_beers'), mine?.beers ?? 0, theirs?.beers ?? 0, 'high'],
+        [t('cmpYears_row_breweries'), mine?.breweries ?? 0, theirs?.breweries ?? 0, 'high'],
+        [t('cmpYears_row_styles'), mine?.styles ?? 0, theirs?.styles ?? 0, 'high'],
+        [t('cmpYears_row_rated'), mine?.ratedCount ?? 0, theirs?.ratedCount ?? 0, 'high'],
+        [t('cmpYears_row_avgRating'), mine?.avgRating ?? null, theirs?.avgRating ?? null, 'high'],
+        [t('cmpYears_row_avgAbv'), mine?.avgAbv ?? null, theirs?.avgAbv ?? null, 'high'],
+        [t('cmpYears_row_strongest'), beerLink(mine?.strongest), beerLink(theirs?.strongest)],
+        [t('cmpYears_row_topStyle'), mine?.topStyles[0]?.name ?? null, theirs?.topStyles[0]?.name ?? null],
+        [t('cmpYears_row_topBrewery'), mine?.topBreweries[0]?.name ?? null, theirs?.topBreweries[0]?.name ?? null],
+        [t('cmpYears_row_busiestMonth'), monthName(mine), monthName(theirs)],
+      ];
+      render($('cmp-year-table'), html`<thead><tr><th>${S.cmpYear}</th><th>${t('compare_you')}</th><th>${name}</th></tr></thead>
+        <tbody>${rows.map(([label, a, b, mode, shown = [cell(a), cell(b)]]) => html`<tr><td>${label}</td>
+          <td class="${win(a, b, mode)}">${shown[0]}</td><td class="${win(b, a, mode)}">${shown[1]}</td></tr>`)}
+          <tr><td>${t('cmpYears_row_shared')}</td><td colspan="2">${num(split.both.length)}</td></tr></tbody>`);
+      const errors = jobs.map(j => j.error).filter(Boolean);
+      $('cmp-year-note').textContent = !pending ? ''
+        : loading ? t('cmpYears_checkinsLoading')
+        : errors.length ? t('years_error', errors.join(' · ')) : t('cmpYears_checkinsIncomplete');
+    }
 
+    if (mode !== 'all') return;
     const pair = (a, b, shown = [num(a), num(b)]) => html`<td class="${win(a, b, 'high')}">${shown[0]}</td><td class="${win(b, a, 'high')}">${shown[1]}</td>`;
     render($('cmp-all-years'), html`<thead>
         <tr><th rowspan="2">${t('cmpYears_year')}</th><th colspan="2">${t('cmpYears_col_checkins')}</th><th colspan="2">${t('cmpYears_col_new')}</th><th rowspan="2">${t('cmpYears_row_shared')}</th></tr>
@@ -431,7 +651,9 @@
   }
 
   // Henter vennens historikk. Egen henting bruker S.syncing, så de to blokkerer ikke hverandre.
-  async function syncFriend(name, known, expected) {
+  async function syncFriend(name, stored, expected) {
+    const known = stored.beers;
+    const full = history.needsFullSync(stored);
     const controller = new AbortController();
     S.friendController = controller;
     S.friendSyncing = true;
@@ -455,13 +677,16 @@
     renderFriendCompare();
     try {
       const res = await history.sync(name, {
-        // Alltid full henting: da erstattes også eldre rader som manglet vennens rangering.
-        known, full: true, expected, signal: controller.signal,
+        // Full henting bare første gang eller for gammel lagring; ellers bare det nye, som for deg.
+        known, full, expected, signal: controller.signal,
         onProgress: p => { if (current() && !p.done) show(p); },
       });
       // Avbrutt betyr at en annen venn er valgt. Da lagres ikke den halve hentingen.
       if (res.stopped === 'aborted') return;
-      const saved = await store.saveHistory(name, { beers: res.beers, complete: res.complete });
+      const saved = await store.saveHistory(name, {
+        beers: res.beers, complete: res.complete,
+        format: full ? history.HISTORY_FORMAT : stored.format ?? null,
+      });
       if (!current()) return;
       S.friend.history = saved;
       S.friend.built = yearsLib.buildYears(res.beers);
@@ -484,6 +709,8 @@
   function init() {
     $('y-sync-stop').addEventListener('click', () => S.controller?.abort());
     $('y-year').addEventListener('change', e => { S.year = Number(e.target.value); renderYear(); renderFriendCompare(); });
+    setupPeriodControls(['y-mode', 'y-year', 'y-period', 'y-preset', 'y-from', 'y-to'], S.view, renderYear);
+    setupPeriodControls(['cmp-mode', 'cmp-year-select', 'cmp-period', 'cmp-preset', 'cmp-from', 'cmp-to'], S.cmpView, () => { renderFriendCompare(); scopeChanged(); }, ['all', 'year', 'period']);
     document.addEventListener('dfu:badges', () => renderYear());
     renderSync();
     void bootstrap();
@@ -536,10 +763,10 @@
       Date.now() - stored.syncedAt < settings.staleHours * 3600000 &&
       (expected == null || expected <= stored.count);
     void syncCheckinDates('me');
-    if (!fresh && !S.friendSyncing) void syncFriend(name, stored.beers, expected);
+    if (!fresh && !S.friendSyncing) void syncFriend(name, stored, expected);
     else void syncCheckinDates('friend');
   }
 
   root.DFU = root.DFU || {};
-  root.DFU.yearsView = { init, setUser, setFriend, refresh: () => runSync(!S.history?.complete), state: S };
+  root.DFU.yearsView = { init, setUser, setFriend, cmpScope, cmpBeers, refresh: () => runSync(!S.history?.complete), state: S };
 })(globalThis);

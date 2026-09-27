@@ -199,3 +199,85 @@ test('uniqueByYear bruker hentede datoer og teller hvert år én gang', () => {
     2024: { count: 1, pending: false }, 2026: { count: 1, pending: false },
   });
 });
+
+test('presetRange: helg, uke og måneder', () => {
+  // 2026-09-27 er en søndag.
+  assert.deepEqual(years.presetRange('today', '2026-09-27'), { from: '2026-09-27', to: '2026-09-27' });
+  assert.deepEqual(years.presetRange('yesterday', '2026-03-01'), { from: '2026-02-28', to: '2026-02-28' });
+  assert.deepEqual(years.presetRange('weekend', '2026-09-27'), { from: '2026-09-25', to: '2026-09-27' }, 'søndag: inneværende helg');
+  assert.deepEqual(years.presetRange('weekend', '2026-09-25'), { from: '2026-09-25', to: '2026-09-27' }, 'fredag: inneværende helg');
+  assert.deepEqual(years.presetRange('weekend', '2026-09-24'), { from: '2026-09-18', to: '2026-09-20' }, 'torsdag: forrige helg');
+  assert.deepEqual(years.presetRange('weekend', '2026-09-28'), { from: '2026-09-25', to: '2026-09-27' }, 'mandag: forrige helg');
+  assert.deepEqual(years.presetRange('thisWeek', '2026-09-27'), { from: '2026-09-21', to: '2026-09-27' });
+  assert.deepEqual(years.presetRange('last7', '2026-01-03'), { from: '2025-12-28', to: '2026-01-03' });
+  assert.deepEqual(years.presetRange('thisMonth', '2026-09-27'), { from: '2026-09-01', to: '2026-09-27' });
+  assert.deepEqual(years.presetRange('lastMonth', '2026-01-15'), { from: '2025-12-01', to: '2025-12-31' });
+  assert.equal(years.presetRange('ukjent', '2026-01-15'), null);
+});
+
+test('periodStats: nye øl og øl smakt igjen', () => {
+  const list = [
+    beer(1, '2025-06-13', { ratingYou: 4 }),
+    beer(2, '2025-06-15', { brewery: 'Ny', breweryUrl: '/Ny', style: 'Sour' }),
+    { ...beer(3, '2024-01-01', { checkins: 2 }), recent: '2025-06-14' },
+    { ...beer(4, '2024-01-01', { checkins: 3 }), recent: '2025-12-01', checkinDates: ['2024-01-01', '2025-06-14', '2025-12-01'] },
+    { ...beer(5, '2024-01-01', { checkins: 4 }), recent: '2025-12-01' },
+    beer(6, '2025-06-16'),
+    beer(7, '2025-06-12'),
+  ];
+  const p = years.periodStats(list, '2025-06-15', '2025-06-13');
+  assert.equal(p.from, '2025-06-13', 'fra og til byttes');
+  assert.deepEqual(p.list.map(b => [b.id, b.again, b.seen]), [
+    ['1', false, '2025-06-13'], ['3', true, '2025-06-14'], ['4', true, '2025-06-14'], ['2', false, '2025-06-15'],
+  ]);
+  assert.equal(p.beers, 4);
+  assert.equal(p.freshCount, 2);
+  assert.equal(p.againCount, 2);
+  assert.deepEqual(p.newBreweries, ['Ny']);
+  assert.deepEqual(p.newStyles, ['Sour']);
+  assert.equal(p.uncertain, 1, 'øl 5 kan ha vært drukket i perioden');
+  assert.equal(years.needsDatesInRange(list[4], '2025-06-13', '2025-06-15'), true);
+  assert.equal(years.needsDatesInRange(list[3], '2025-06-13', '2025-06-15'), false);
+  assert.deepEqual(p.days, { unit: 'day', keys: ['2025-06-13', '2025-06-14', '2025-06-15'], counts: [1, 2, 1] });
+  assert.equal(p.avgRating, 4);
+  assert.equal(p.weekdays[6], 2, 'lørdag 14. juni');
+});
+
+test('periodStats: lange perioder grupperes per måned', () => {
+  const p = years.periodStats([beer(1, '2025-01-31'), beer(2, '2025-03-01')], '2025-01-15', '2025-04-02');
+  assert.equal(p.days.unit, 'month');
+  assert.deepEqual(p.days.keys, ['2025-01', '2025-02', '2025-03', '2025-04']);
+  assert.deepEqual(p.days.counts, [1, 0, 1, 0]);
+  assert.equal(years.periodStats([], 'x', '2025-01-01'), null);
+});
+
+test('rangeTimeline: kumulativt dag for dag i en kort periode, stopper ved until', () => {
+  const b = (id, seen, o = {}) => ({ id, name: `B${id}`, first: '2020-01-01', seen, brewery: 'X', breweryUrl: `/w/${o.brewery ?? 'x'}/1`, style: o.style ?? 'IPA' });
+  const r = years.rangeTimeline([b(1, '2025-06-02'), b(2, '2025-06-02', { style: 'Stout', brewery: 'y' }), b(3, '2025-06-04'), b(4, '2025-05-31')], '2025-06-01', '2025-06-10', { 3: 'Norway' }, { until: '2025-06-05' });
+  assert.equal(r.unit, 'day');
+  assert.deepEqual(r.points.map(p => [p.date, p.unique, p.breweries, p.styles, p.countries]), [
+    ['2025-05-31', 0, 0, 0, 0],
+    ['2025-06-01', 0, 0, 0, 0],
+    ['2025-06-02', 2, 2, 2, 0],
+    ['2025-06-03', 2, 2, 2, 0],
+    ['2025-06-04', 3, 2, 2, 1],
+    ['2025-06-05', 3, 2, 2, 1],
+  ]);
+});
+
+test('rangeTimeline: et helt år går måned for måned og bruker first', () => {
+  const r = years.rangeTimeline([{ id: 1, first: '2025-01-15', style: 'IPA' }, { id: 2, first: '2025-03-01', style: 'IPA' }], '2025-01-01', '2025-12-31');
+  assert.equal(r.unit, 'month');
+  assert.equal(r.points.length, 13);
+  assert.deepEqual(r.points.slice(0, 4).map(p => [p.date, p.unique]), [['2025-01-01', 0], ['2025-01-31', 1], ['2025-02-28', 1], ['2025-03-31', 2]]);
+  assert.equal(r.points.at(-1).date, '2025-12-31');
+});
+
+test('allTimeStats: hele historikken med innsjekkinger, bryggerier og stiler', () => {
+  const s = years.allTimeStats([
+    { id: 1, name: 'A', first: '2019-01-01', checkins: 3, brewery: 'X', breweryUrl: '/x', style: 'IPA', ratingYou: 4, abv: 6 },
+    { id: 2, name: 'B', first: '2025-01-01', brewery: 'Y', breweryUrl: '/y', style: 'IPA', ratingYou: 3, abv: 9 },
+    { id: 3, name: 'C', first: 'ukjent' },
+  ]);
+  assert.deepEqual([s.checkins, s.beers, s.breweries, s.styles, s.ratedCount, s.avgRating, s.strongest.name], [4, 2, 2, 1, 2, 3.5, 'B']);
+});

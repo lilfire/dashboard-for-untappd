@@ -93,3 +93,13 @@ test('compare: felles, bare du og bare vennen, med hvem som var først og den an
   assert.deepEqual(c.special.onlyMe.map(x => x.id), ['5']);
   assert.deepEqual(c.special.onlyThem.map(x => [x.id, x.other]), [['15', null]]);
 });
+
+test('inRange gir merker oppnådd i perioden, begge datoer med', () => {
+  const list = [
+    badge(1, 'IPA Day (2026)', { special: true, date: '2026-03-01' }),
+    badge(2, 'Beer Day (2026)', { special: true, date: '2026-03-05T20:00:00' }),
+    badge(3, 'Stout Day (2026)', { special: true, date: '2026-03-06' }),
+  ];
+  assert.deepEqual(badges.inRange(list, '2026-03-01', '2026-03-05').special.map(b => b.id).sort(), ['1', '2']);
+  assert.equal(badges.inYear(list, 2026).special.length, 3);
+});

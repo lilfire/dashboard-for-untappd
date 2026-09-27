@@ -6,7 +6,7 @@
   "scripts": {
     "lint": "web-ext lint",
     "build": "web-ext build",
-    "start:firefox": "web-ext run --target firefox-desktop",
+    "start:firefox": "web-ext run --target firefox-desktop --firefox-profile .firefox-profile --profile-create-if-missing --keep-profile-changes --pref extensions.webextensions.keepStorageOnUninstall=true --pref extensions.webextensions.keepUuidOnUninstall=true",
     "test": "node --test test/*.test.js"
   },
   "webExt": {
@@ -20,7 +20,8 @@
       "README.md",
       "package.json",
       "package-lock.json",
-      "web-ext-artifacts"
+      "web-ext-artifacts",
+      ".firefox-profile"
     ],
     "build": {
       "overwriteDest": true

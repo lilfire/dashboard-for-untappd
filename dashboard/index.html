@@ -222,6 +222,22 @@
       <div id="cmp-out" hidden>
         <h3 class="cmp-kpis-title" id="cmp-kpis-title"></h3>
         <section class="kpis" id="cmp-kpis"></section>
+        <div class="year-bar" id="cmp-year-bar">
+          <select id="cmp-mode" data-i18n-aria-label="period_mode"></select>
+          <select id="cmp-year-select" data-i18n-aria-label="cmpYears_year"></select>
+          <span class="period-controls" id="cmp-period" hidden>
+            <select id="cmp-preset" data-i18n-aria-label="period_preset"></select>
+            <label><span data-i18n="period_from"></span> <input type="date" id="cmp-from"></label>
+            <label><span data-i18n="period_to"></span> <input type="date" id="cmp-to"></label>
+          </span>
+        </div>
+        <p class="meta" id="cmp-year-meta"></p>
+        <div class="cmp-scope" id="cmp-scope-range">
+          <div class="table-wrap"><table class="year-cmp" id="cmp-year-table"></table></div>
+          <p class="meta" id="cmp-year-definitions" data-i18n="cmpYears_definitions"></p>
+          <p class="meta" id="cmp-year-note"></p>
+          <p id="cmp-period-fetch" hidden><button class="btn" type="button" id="cmp-fetch-dates" data-i18n="period_fetchDates"></button></p>
+        </div>
         <section class="cmp-chart-card" id="cmp-trend">
           <h3 data-i18n="compare_trend"></h3>
           <div class="segmented" id="cmp-trend-metric" role="group">
@@ -235,6 +251,7 @@
           <p class="meta" id="cmp-trend-note"></p>
         </section>
         <div class="segmented" id="cmp-kind" role="group">
+          <button type="button" data-kind="beers" data-i18n="compare_beers"></button>
           <button type="button" data-kind="breweries" data-i18n="tab_breweries"></button>
           <button type="button" data-kind="countries" data-i18n="tab_countries"></button>
           <button type="button" data-kind="styles" data-i18n="tab_styles"></button>
@@ -250,21 +267,10 @@
           </div>
           <div class="cmp-badges-out" id="cmp-badges-out"></div>
         </section>
-      </div>
-      <div id="cmp-years" hidden>
-        <h2 data-i18n="cmpYears_title"></h2>
-        <p class="meta" id="cmp-year-meta"></p>
-        <div class="year-bar" id="cmp-year-bar" hidden>
-          <select id="cmp-year-select" data-i18n-aria-label="cmpYears_year"></select>
-          <span class="meta" id="cmp-year-summary"></span>
-        </div>
-        <div id="cmp-year-chart"></div>
-        <div class="table-wrap"><table class="year-cmp" id="cmp-year-table"></table></div>
-        <p class="meta" id="cmp-year-definitions" data-i18n="cmpYears_definitions"></p>
-        <p class="meta" id="cmp-year-note"></p>
-        <div class="cmp-cols" id="cmp-year-cols"></div>
-        <h2 id="cmp-all-title" data-i18n="cmpYears_allYears" hidden></h2>
-        <div class="table-wrap"><table class="year-cmp" id="cmp-all-years"></table></div>
+        <section class="cmp-scope" id="cmp-all-block" aria-labelledby="cmp-all-title" hidden>
+          <h2 id="cmp-all-title" data-i18n="cmpYears_allYears"></h2>
+          <div class="table-wrap"><table class="year-cmp" id="cmp-all-years"></table></div>
+        </section>
       </div>
     </section>
 
@@ -279,7 +285,13 @@
         <div class="progress" id="y-progress" hidden><i style="width:0%"></i></div>
       </div>
       <div class="year-bar" id="y-bar" hidden>
-        <select id="y-year" aria-label="År"></select>
+        <select id="y-mode" data-i18n-aria-label="period_mode"></select>
+        <select id="y-year" data-i18n-aria-label="cmpYears_year"></select>
+        <span class="period-controls" id="y-period" hidden>
+          <select id="y-preset" data-i18n-aria-label="period_preset"></select>
+          <label><span data-i18n="period_from"></span> <input type="date" id="y-from"></label>
+          <label><span data-i18n="period_to"></span> <input type="date" id="y-to"></label>
+        </span>
         <span class="meta" id="y-summary"></span>
       </div>
       <div class="cards" id="y-cards"></div>

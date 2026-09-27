@@ -199,6 +199,20 @@ test('beersFor finds beers per brewery by name or id, per style and per country'
   assert.deepEqual(beersFor('countries', { id: 'no', name: 'Norway' }, beers).map(b => b.id), []);
 });
 
+test('groupBeers counts beers per brewery (by id or name), style and country', () => {
+  const { groupBeers } = compareModule();
+  const beers = [
+    { id: 1, brewery: 'Bräu', breweryUrl: '/w/brau/10', style: 'IPA' },
+    { id: 2, brewery: 'Renamed', breweryUrl: '/w/renamed/10', style: 'IPA' },
+    { id: 3, brewery: 'Garage', breweryUrl: null, style: 'Stout' },
+    { id: 4, brewery: 'GARAGE', breweryUrl: null, style: null },
+  ];
+  const plain = list => JSON.parse(JSON.stringify(list));
+  assert.deepEqual(plain(groupBeers(beers, 'breweries')), [{ id: '10', name: 'Bräu', count: 2 }, { id: 'garage', name: 'Garage', count: 2 }]);
+  assert.deepEqual(plain(groupBeers(beers, 'styles')), [{ id: 'IPA', name: 'IPA', count: 2 }, { id: 'Stout', name: 'Stout', count: 1 }]);
+  assert.deepEqual(plain(groupBeers(beers, 'countries', { 1: 'Norway', 3: 'Norway', 4: 'Sweden' })), [{ id: 'Norway', name: 'Norway', count: 2 }, { id: 'Sweden', name: 'Sweden', count: 1 }]);
+});
+
 test('beers under a shared brewery split into shared, only mine and only theirs', () => {
   const { beersFor } = compareModule();
   const years = require('../lib/years.js');
@@ -207,4 +221,108 @@ test('beers under a shared brewery split into shared, only mine and only theirs'
   const theirs = [{ id: 2, name: 'B', brewery: 'Brew' }, { id: 3, name: 'C', brewery: 'Brew' }];
   const s = years.compareYear(beersFor('breweries', item, mine), beersFor('breweries', item, theirs));
   assert.deepEqual([s.both, s.onlyMine, s.onlyTheirs].map(l => l.map(b => b.id)), [[2], [1], [3]]);
+});
+
+test('beers tab splits both histories and waits for missing history', async () => {
+  const { document, DOMParser } = parseHTML(`<form id="cmp-form"><input id="cmp-user"><ul id="cmp-friends" hidden></ul><button></button></form>
+    <p id="cmp-friends-meta"></p><p id="cmp-meta"></p><div id="cmp-task-countries"></div>
+    <div id="cmp-out" hidden><h3 id="cmp-kpis-title"></h3><section id="cmp-kpis"></section>
+    <div id="cmp-trend-metric"></div><div id="cmp-trend-legend"></div><div id="cmp-trend-chart"></div><p id="cmp-trend-note"></p>
+    <div id="cmp-kind"><button type="button" data-kind="beers"></button></div>
+    <div id="cmp-overlap"></div><p id="cmp-summary"></p><div id="cmp-cols"></div></div>`);
+  const beer = (id, ratingYou) => ({ id, name: `Beer ${id}`, brewery: 'B', style: 'IPA', ratingYou, first: '2025-01-01', url: `/b/${id}` });
+  const state = { history: { beers: [] }, friend: null };
+  const DFU = {
+    i18n: { t: (key, ...args) => [key, ...args].join(':'), number: String, locale: () => 'en', date: String },
+    store: { loadCountries: async () => ({ byBeer: {}, counts: {} }) },
+    fetch: { fetchDirect: async () => ({ data: { hasData: true, pageOwner: 'anne', breweries: [], countries: [], styles: [] } }) },
+    progress: { hideTask() {} },
+    views: { renderKpis() {} },
+    charts: { lineChart() {} },
+    yearsView: { state, setFriend() {} },
+  };
+  const context = vm.createContext({ DFU, document, DOMParser, AbortController });
+  vm.runInContext(fs.readFileSync(require.resolve('../lib/html.js'), 'utf8'), context);
+  vm.runInContext(fs.readFileSync(require.resolve('../lib/years.js'), 'utf8'), context);
+  vm.runInContext(fs.readFileSync(require.resolve('../dashboard/compare.js'), 'utf8'), context);
+  DFU.compare.init();
+  DFU.compare.setMe({ pageOwner: 'me', breweries: [], countries: [], styles: [] });
+  document.querySelector('[data-kind="beers"]').click();
+  document.getElementById('cmp-user').value = 'anne';
+  document.getElementById('cmp-form').dispatchEvent(new document.defaultView.Event('submit', { cancelable: true }));
+  await new Promise(resolve => setImmediate(resolve));
+
+  const cols = () => document.getElementById('cmp-cols');
+  assert.match(cols().textContent, /compare_needHistory/);
+  assert.match(cols().textContent, /compare_friendHistoryLoading:anne/);
+
+  state.history.beers = [beer(1, 4), beer(2, 3.5)];
+  state.friend = { name: 'anne', history: { beers: [beer(2, 4.25), beer(3, 3)] } };
+  document.dispatchEvent(new document.defaultView.Event('dfu:friend-history'));
+  const lists = () => [...cols().querySelectorAll('.cmp-col')].map(col => [...col.querySelectorAll('li a')].map(a => a.textContent));
+  const pick = col => document.querySelector(`#cmp-overlap [data-show="${col}"]`).click();
+  assert.deepEqual(lists(), []);
+  assert.match(cols().textContent, /compare_pickList/);
+  pick('both');
+  assert.deepEqual(lists(), [['Beer 2']]);
+  assert.match(cols().querySelector('.cmp-col li').textContent, /3\.5 \/ 4\.25/);
+  assert.equal(document.querySelector('[data-show="both"]').getAttribute('aria-pressed'), 'true');
+  pick('me');
+  assert.deepEqual(lists(), [['Beer 1']]);
+  pick('them');
+  assert.deepEqual(lists(), [['Beer 3']]);
+  pick('them');
+  assert.deepEqual(lists(), []);
+  assert.equal(document.getElementById('cmp-summary').textContent, 'compare_summary:1:1:1:anne');
+});
+
+test('year filter limits beers and breweries to the beers in the chosen time', async () => {
+  const { document, DOMParser } = parseHTML(`<form id="cmp-form"><input id="cmp-user"><ul id="cmp-friends" hidden></ul><button></button></form>
+    <p id="cmp-friends-meta"></p><p id="cmp-meta"></p><div id="cmp-task-countries"></div>
+    <div id="cmp-out" hidden><h3 id="cmp-kpis-title"></h3><section id="cmp-kpis"></section>
+    <div id="cmp-trend-metric"></div><div id="cmp-trend-legend"></div><div id="cmp-trend-chart"></div><p id="cmp-trend-note"></p>
+    <div id="cmp-kind"><button type="button" data-kind="beers"></button><button type="button" data-kind="breweries"></button></div>
+    <div id="cmp-overlap"></div><p id="cmp-summary"></p><div id="cmp-cols"></div></div>`);
+  const beer = (id, brewery, first) => ({ id, name: `Beer ${id}`, brewery, breweryUrl: `/w/x/${brewery.charCodeAt(0)}`, style: 'IPA', first, url: `/b/${id}` });
+  const mine = [beer(1, 'A', '2025-02-01'), beer(2, 'B', '2024-02-01'), beer(3, 'C', '2025-03-01')];
+  const theirs = [beer(1, 'A', '2025-05-01'), beer(4, 'B', '2025-01-01')];
+  let mode = 'all';
+  const inYear = list => list.filter(b => b.first.startsWith('2025'));
+  const state = { history: { beers: mine }, friend: null };
+  const DFU = {
+    i18n: { t: (key, ...args) => [key, ...args].join(':'), number: String, locale: () => 'en', date: String },
+    store: { loadCountries: async () => ({ byBeer: {}, counts: {} }) },
+    fetch: { fetchDirect: async () => ({ data: { hasData: true, pageOwner: 'anne', breweries: [{ id: '65', name: 'A', count: 1 }], countries: [], styles: [] } }) },
+    progress: { hideTask() {} },
+    views: { renderKpis() {} },
+    charts: { lineChart() {} },
+    yearsView: {
+      state, setFriend() {},
+      cmpScope: () => (mode === 'all' ? { mode } : { mode, year: 2025, from: '2025-01-01', to: '2025-12-31' }),
+      cmpBeers: who => inYear(who === 'me' ? mine : theirs),
+    },
+  };
+  const context = vm.createContext({ DFU, document, DOMParser, AbortController });
+  vm.runInContext(fs.readFileSync(require.resolve('../lib/html.js'), 'utf8'), context);
+  vm.runInContext(fs.readFileSync(require.resolve('../lib/years.js'), 'utf8'), context);
+  vm.runInContext(fs.readFileSync(require.resolve('../dashboard/compare.js'), 'utf8'), context);
+  DFU.compare.init();
+  DFU.compare.setMe({ pageOwner: 'me', breweries: [{ id: '65', name: 'A', count: 1 }, { id: '66', name: 'B', count: 1 }, { id: '67', name: 'C', count: 1 }], countries: [], styles: [] });
+  document.getElementById('cmp-user').value = 'anne';
+  document.getElementById('cmp-form').dispatchEvent(new document.defaultView.Event('submit', { cancelable: true }));
+  await new Promise(resolve => setImmediate(resolve));
+  state.friend = { name: 'anne', history: { beers: theirs } };
+  const summary = () => document.getElementById('cmp-summary').textContent;
+  const kind = k => document.querySelector(`#cmp-kind [data-kind="${k}"]`).click();
+
+  kind('beers');
+  assert.equal(summary(), 'compare_summary:1:2:1:anne');
+  kind('breweries');
+  assert.equal(summary(), 'compare_summary:1:2:0:anne', 'hele tiden bruker profilens bryggerier');
+
+  mode = 'year';
+  document.dispatchEvent(new document.defaultView.Event('dfu:cmp-scope'));
+  assert.equal(summary(), 'compare_summary:1:1:1:anne', '2025: A felles, C bare meg, B bare anne');
+  kind('beers');
+  assert.equal(summary(), 'compare_summary:1:1:1:anne', '2025: øl 1 felles, øl 3 bare meg, øl 4 bare anne');
 });

@@ -11,7 +11,7 @@
     "96": "icons/icon-96.png",
     "128": "icons/icon-128.png"
   },
-  "permissions": ["storage"],
+  "permissions": ["storage", "unlimitedStorage"],
   "host_permissions": ["https://untappd.com/*"],
   "background": {
     "service_worker": "background.js",

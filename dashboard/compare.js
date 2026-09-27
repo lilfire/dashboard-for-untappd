@@ -1,7 +1,8 @@
-// Sammenligning med en venn: felles, bare du og bare vennen, for bryggerier, land eller stiler.
+// Sammenligning med en venn: felles, bare du og bare vennen, for øl, bryggerier, land eller stiler,
+// for hele tiden eller tidsrommet som er valgt øverst.
 (function (root) {
   const { i18n, fetch: net, store, history, progress } = root.DFU;
-  const { html, render } = root.DFU.html;
+  const { html, render, listMore, listClass } = root.DFU.html;
   const { t } = i18n;
   const $ = id => document.getElementById(id);
   const num = n => i18n.number(n);
@@ -10,7 +11,7 @@
   const UNTAPPD = 'https://untappd.com';
   const fold = s => String(s).normalize('NFD').replace(/\p{Mn}/gu, '').toLowerCase();
 
-  const K = { me: null, them: null, themName: '', kind: 'breweries', trendMetric: 'unique', theirCountries: { byBeer: {}, counts: {} } };
+  const K = { me: null, them: null, themName: '', kind: 'breweries', show: null, trendMetric: 'unique', theirCountries: { byBeer: {}, counts: {} } };
   // Åpne rader, nøkkel «type|kolonne|id», og hentingen av vennens land.
   const open = new Set();
   let countrySync = { friend: null, running: false, error: null, controller: null };
@@ -161,12 +162,64 @@
     return (beers ?? []).filter(match).sort((a, b) => String(b.first ?? '').localeCompare(String(a.first ?? '')));
   }
 
+  // Hele historikken, brukt av trenden og for å se om historikken er hentet.
   const myBeers = () => root.DFU.yearsView?.state?.history?.beers ?? [];
   function theirBeers() {
     const friend = root.DFU.yearsView?.state?.friend;
     return friend?.name === K.themName ? friend.history?.beers ?? [] : [];
   }
   const myCountries = () => root.DFU.countries?.byBeer() ?? {};
+
+  // Tidsfilteret øverst: hele tiden, ett år eller en periode.
+  const scope = () => root.DFU.yearsView?.cmpScope?.() ?? { mode: 'all' };
+  const scoped = who => {
+    const all = who === 'me' ? myBeers() : theirBeers();
+    if (scope().mode === 'all' || !all.length) return all;
+    return root.DFU.yearsView.cmpBeers(who === 'me' ? 'me' : 'friend');
+  };
+
+  // Bryggerier, stiler eller land for en liste med øl, med antall øl i hver.
+  function groupBeers(beers, kind, byBeer = {}) {
+    const groups = new Map();
+    for (const b of beers ?? []) {
+      let id, name;
+      if (kind === 'breweries') {
+        if (!b.brewery && !b.breweryUrl) continue;
+        id = String(b.breweryUrl ?? '').match(/\/(\d+)\/?$/)?.[1] ?? (b.breweryUrl || fold(b.brewery));
+        name = b.brewery ?? id;
+      } else {
+        name = kind === 'styles' ? b.style : byBeer[b.id];
+        if (!name) continue;
+        id = name;
+      }
+      const cur = groups.get(id) ?? { id, name, count: 0 };
+      cur.count++;
+      groups.set(id, cur);
+    }
+    return [...groups.values()];
+  }
+
+  // Radene for fanen: ølene fra historikken, ellers listene fra profilen.
+  // Med år eller periode regnes også bryggerier, stiler og land ut fra ølene i tidsrommet.
+  const asItems = beers => beers.map(b => ({ ...b, id: b.id ?? b.name, count: b.checkins ?? 1 }));
+  function itemsFor(who) {
+    if (K.kind === 'beers') return asItems(scoped(who));
+    if (scope().mode === 'all') return (who === 'me' ? K.me : K.them)[K.kind];
+    return groupBeers(scoped(who), K.kind, who === 'me' ? myCountries() : K.theirCountries.byBeer);
+  }
+
+  // Hvorfor ølhistorikken ikke kan vises ennå, eller en tom liste.
+  function historyNotes({ countries = false } = {}) {
+    const notes = [];
+    if (!myBeers().length) notes.push(t('compare_needHistory'));
+    else if (countries && !Object.keys(myCountries()).length) notes.push(t('countries_needSyncHint'));
+    if (!theirBeers().length) notes.push(t('compare_friendHistoryLoading', K.themName));
+    else if (countries) {
+      if (countrySync.error && countrySync.friend === K.themName) notes.push(t('years_error', countrySync.error));
+      else if (countrySync.running || !Object.keys(K.theirCountries.byBeer ?? {}).length) notes.push(t('compare_countryLoading', K.themName));
+    }
+    return notes;
+  }
   // Kobler alle vennens øl til land med en gang vennen er hentet, via ølsidens landfilter.
   // Bare land som mangler, eller der antallet har endret seg, hentes. Koblingen lagres.
   async function syncFriendCountries() {
@@ -247,8 +300,8 @@
     }
     if (notes.length) return html`<p class="meta">${notes.join(' ')}</p>`;
 
-    const mine = needMine ? beersFor(K.kind, item, myBeers(), myCountries()) : [];
-    const theirs = needTheirs ? beersFor(K.kind, item, theirBeers(), K.theirCountries.byBeer) : [];
+    const mine = needMine ? beersFor(K.kind, item, scoped('me'), myCountries()) : [];
+    const theirs = needTheirs ? beersFor(K.kind, item, scoped('them'), K.theirCountries.byBeer) : [];
     if (col === 'me') return group(t('compare_onlyMe'), mine, b => rate(b.ratingYou));
     if (col === 'them') return group(t('compare_onlyThem', K.themName), theirs, b => rate(b.ratingYou));
     const key = b => b.id ?? b.name;
@@ -264,16 +317,17 @@
 
   function column(title, items, value, col) {
     const more = items.length > MAX_ITEMS ? html`<li><span>… +${num(items.length - MAX_ITEMS)}</span><span></span></li>` : '';
-    const row = x => {
+    const row = K.kind === 'beers' ? x => html`<li><span><a href="${UNTAPPD}${x.url ?? ''}" target="_blank" rel="noopener">${x.name}</a><span class="sub-line">${[x.brewery, x.style].filter(Boolean).join(' · ')}</span></span><span>${value(x)}</span></li>` : x => {
       const key = `${K.kind}|${col}|${x.id}`;
       const isOpen = open.has(key);
       return html`<li><span><button type="button" class="row-toggle" data-cmp="${key}" aria-expanded="${isOpen ? 'true' : 'false'}">${K.kind === 'countries' ? root.DFU.countryNames.localName(x.name, i18n.locale()) : x.name}</button></span><span>${value(x)}</span>${isOpen ? html`<div class="cmp-detail">${detail(col, x)}</div>` : ''}</li>`;
     };
+    const list = `cmp|${K.kind}|${col}`;
     return html`<section class="cmp-col"><h3>${title} <span>${num(items.length)}</span></h3>
-      <ol>${items.slice(0, MAX_ITEMS).map(row)}${more}${items.length ? "" : html`<li class="meta">${t("compare_empty")}</li>`}</ol></section>`;
+      <ol class="${listClass(list)}">${items.slice(0, MAX_ITEMS).map(row)}${more}${items.length ? "" : html`<li class="meta">${t("compare_empty")}</li>`}${listMore(list, items.length)}</ol></section>`;
   }
 
-  // Kumulativ utvikling for deg og vennen i samme diagram, langs kalendertid.
+  // Kumulativ utvikling for deg og vennen i samme diagram, for hele tiden eller valgt tidsrom.
   function renderTrend() {
     const metric = K.trendMetric;
     for (const b of document.querySelectorAll('#cmp-trend-metric button')) b.setAttribute('aria-pressed', String(b.dataset.metric === metric));
@@ -282,33 +336,41 @@
     const note = $('cmp-trend-note');
     render($('cmp-trend-legend'), html`<span><i class="mine"></i>${t('compare_you')}</span><span><i class="theirs"></i>${K.themName}</span>`);
 
-    const notes = [];
-    if (!myBeers().length) notes.push(t('compare_needHistory'));
-    else if (metric === 'countries' && !Object.keys(myCountries()).length) notes.push(t('countries_needSyncHint'));
-    if (!theirBeers().length) notes.push(t('compare_friendHistoryLoading', K.themName));
-    else if (metric === 'countries') {
-      if (countrySync.error && countrySync.friend === K.themName) notes.push(t('years_error', countrySync.error));
-      else if (countrySync.running || !Object.keys(K.theirCountries.byBeer ?? {}).length) notes.push(t('compare_countryLoading', K.themName));
-    }
+    const notes = historyNotes({ countries: metric === 'countries' });
     if (notes.length) {
       chart.replaceChildren();
       note.textContent = notes.join(' ');
       return;
     }
 
-    const lastMonth = beers => beers.reduce((max, b) => (typeof b.first === 'string' && b.first.slice(0, 7) > max ? b.first.slice(0, 7) : max), '');
-    const until = [lastMonth(myBeers()), lastMonth(theirBeers())].sort().at(-1);
-    const points = (beers, byCountry) => root.DFU.years.timeline(beers, byCountry, { until })
-      .map(p => ({ date: p.date, value: p[metric] }));
-    const mine = points(myBeers(), myCountries());
-    const theirs = points(theirBeers(), K.theirCountries.byBeer);
-    root.DFU.charts.lineChart(chart, [
+    const { mode, from, to } = scope();
+    const years = root.DFU.years;
+    const pick = list => list.map(p => ({ date: p.date, value: p[metric] }));
+    const draw = (mine, theirs, fmtDate) => root.DFU.charts.lineChart(chart, [
       { points: mine, cls: 'mine', label: t('compare_you') },
       { points: theirs, cls: 'theirs', label: K.themName },
-    ], {
-      fmtValue: v => num(v),
-      fmtDate: d => i18n.date(`${d}T12:00:00`, { month: 'short', year: '2-digit' }),
-    });
+    ], { fmtValue: v => num(v), fmtDate });
+    const monthLabel = d => i18n.date(`${d}T12:00:00`, { month: 'short', year: '2-digit' });
+
+    if (mode !== 'all' && from && to) {
+      // Kurven stopper i dag, så et år eller en periode som ikke er over ikke flater ut mot fremtiden.
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const line = (who, byCountry) => years.rangeTimeline(scoped(who), from, to, byCountry, { until: today });
+      const mine = line('me', myCountries());
+      const theirs = line('them', K.theirCountries.byBeer);
+      const days = mine.unit === 'day';
+      draw(pick(mine.points), pick(theirs.points), days ? d => i18n.date(`${d}T12:00:00`, { day: 'numeric', month: 'short' }) : monthLabel);
+      const last = list => list.at(-1)?.[metric] ?? 0;
+      note.textContent = `${t(days ? 'compare_trendNoteDays' : 'compare_trendNoteMonths')} ${t('compare_trendTotal', num(last(mine.points)), K.themName, num(last(theirs.points)))}`;
+      return;
+    }
+
+    const lastMonth = beers => beers.reduce((max, b) => (typeof b.first === 'string' && b.first.slice(0, 7) > max ? b.first.slice(0, 7) : max), '');
+    const until = [lastMonth(myBeers()), lastMonth(theirBeers())].sort().at(-1);
+    const mine = pick(years.timeline(myBeers(), myCountries(), { until }));
+    const theirs = pick(years.timeline(theirBeers(), K.theirCountries.byBeer, { until }));
+    draw(mine, theirs, monthLabel);
     // Vekst de siste tolv månedene, regnet fra samme sluttmåned for begge.
     const growth = list => (list.at(-1)?.value ?? 0) - (list.at(-13)?.value ?? 0);
     note.textContent = `${t('compare_trendNote')} ${t('compare_trendLast12', num(growth(mine)), K.themName, num(growth(theirs)))}`;
@@ -319,27 +381,41 @@
     if (!K.me || !K.them) return;
     $('cmp-kpis-title').textContent = t('compare_totals', K.themName);
     root.DFU.views.renderKpis($('cmp-kpis'), K.them);
-    const s = split(K.me[K.kind], K.them[K.kind]);
+    const beers = K.kind === 'beers';
+    const ranged = scope().mode !== 'all';
+    const notes = beers || ranged ? historyNotes({ countries: ranged && K.kind === 'countries' }) : [];
+    if (notes.length) {
+      $('cmp-summary').textContent = '';
+      if ($('cmp-overlap')) render($('cmp-overlap'), []);
+      render($('cmp-cols'), html`<p class="meta">${notes.join(' ')}</p>`);
+      renderTrend();
+      $('cmp-out').hidden = false;
+      return;
+    }
+    const s = split(itemsFor('me'), itemsFor('them'));
+    const unit = beers ? t('compare_beers') : t('tab_' + K.kind);
     $('cmp-summary').textContent = t('compare_summary', num(s.both.length), num(s.onlyMe.length), num(s.onlyThem.length), K.themName);
     const total = s.both.length + s.onlyMe.length + s.onlyThem.length;
     const segments = [
-      [t('compare_onlyMe'), s.onlyMe.length, 'mine'],
-      [t('compare_both'), s.both.length, 'shared'],
-      [t('compare_onlyThem', K.themName), s.onlyThem.length, 'theirs'],
+      [t('compare_onlyMe'), s.onlyMe.length, 'mine', 'me'],
+      [t('compare_both'), s.both.length, 'shared', 'both'],
+      [t('compare_onlyThem', K.themName), s.onlyThem.length, 'theirs', 'them'],
     ];
+    // Kortene velger hvilken liste som vises under; bare én om gangen.
     if ($('cmp-overlap')) render($('cmp-overlap'), html`
-      <div class="cmp-metrics">${segments.map(([label, count, tone]) => html`<div class="cmp-stat ${tone}"><span>${label}</span><strong>${num(count)}</strong><small>${t('tab_' + K.kind)}</small></div>`)}</div>
-      <section class="cmp-chart-card"><h3>${t('compare_overlap')}</h3>
-        <p class="meta">${t('compare_overlapNote')}</p>
-        <div class="cmp-overlap-track" aria-hidden="true">${segments.map(([, count, tone]) => html`<i class="${tone}" style="width:${total ? count / total * 100 : 0}%"></i>`)}</div>
-        <div class="cmp-legend">${segments.map(([label, count, tone]) => html`<span><i class="${tone}"></i>${label}: <b>${num(count)}</b></span>`)}</div>
-        ${total ? '' : html`<p class="meta">${t('compare_empty')}</p>`}
-      </section>`);
-    render($('cmp-cols'), [
-      column(`${t('compare_both')} (${t('compare_you')} / ${K.themName})`, s.both, x => `${num(x.me)} / ${num(x.them)}`, 'both'),
-      column(t('compare_onlyMe'), s.onlyMe, x => num(x.count), 'me'),
-      column(t('compare_onlyThem', K.themName), s.onlyThem, x => num(x.count), 'them'),
-    ]);
+      <div class="cmp-metrics">${segments.map(([label, count, tone, col]) => html`<button type="button" class="cmp-stat ${tone}" data-show="${col}" aria-pressed="${K.show === col ? 'true' : 'false'}"><span>${label}</span><strong>${num(count)}</strong><small>${unit}</small></button>`)}</div>
+      <div class="cmp-overlap-track" aria-hidden="true">${segments.map(([, count, tone]) => html`<i class="${tone}" style="width:${total ? count / total * 100 : 0}%"></i>`)}</div>
+      ${total ? '' : html`<p class="meta">${t('compare_empty')}</p>`}`);
+    // Øl viser ratingene; de andre fanene antall.
+    const theirById = beers ? new Map(itemsFor('them').map(x => [x.id, x])) : null;
+    const bothValue = beers ? x => `${rate(x.ratingYou)} / ${rate(theirById.get(x.id)?.ratingYou)}` : x => `${num(x.me)} / ${num(x.them)}`;
+    const oneValue = beers ? x => rate(x.ratingYou) : x => num(x.count);
+    const cols = {
+      both: () => column(`${t('compare_both')} (${t('compare_you')} / ${K.themName})`, s.both, bothValue, 'both'),
+      me: () => column(t('compare_onlyMe'), s.onlyMe, oneValue, 'me'),
+      them: () => column(t('compare_onlyThem', K.themName), s.onlyThem, oneValue, 'them'),
+    };
+    render($('cmp-cols'), cols[K.show]?.() ?? html`<p class="meta">${t('compare_pickList')}</p>`);
     renderTrend();
     $('cmp-out').hidden = false;
   }
@@ -415,6 +491,12 @@
       K.trendMetric = b.dataset.metric;
       renderTrend();
     });
+    $('cmp-overlap')?.addEventListener('click', e => {
+      const b = e.target.closest('button[data-show]');
+      if (!b) return;
+      K.show = K.show === b.dataset.show ? null : b.dataset.show;
+      renderCompare();
+    });
     // Klikk på et navn i en kolonne åpner eller lukker ølene bak raden.
     $('cmp-cols')?.addEventListener('click', e => {
       const btn = e.target.closest('.row-toggle[data-cmp]');
@@ -423,8 +505,16 @@
       if (open.has(key)) open.delete(key); else open.add(key);
       renderCompare();
     });
+    // Nytt tidsfilter: lukk åpne rader, siden de hører til forrige tidsrom.
+    let lastScope = JSON.stringify(scope());
+    document.addEventListener('dfu:cmp-scope', () => {
+      const now = JSON.stringify(scope());
+      if (now !== lastScope) open.clear();
+      lastScope = now;
+      renderCompare();
+    });
     for (const name of ['dfu:history', 'dfu:countries', 'dfu:friend-history']) {
-      document.addEventListener(name, () => { if (open.size) renderCompare(); else renderTrend(); });
+      document.addEventListener(name, () => { if (open.size || K.kind === 'beers') renderCompare(); else renderTrend(); });
     }
     renderCompare();
   }
@@ -449,5 +539,5 @@
   }
 
   root.DFU = root.DFU || {};
-  root.DFU.compare = { init, setMe, split, beersFor, refresh };
+  root.DFU.compare = { init, setMe, split, beersFor, groupBeers, refresh };
 })(globalThis);

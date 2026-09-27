@@ -13,7 +13,7 @@ Nettleserutvidelse for Firefox, Chrome og andre Chromium-baserte nettlesere, ogs
 - **Mine øl:** alle ølene du har drukket, med søk, sortering og din rangering mot den globale
 - **Utvikling:** kurve over unike øl, bryggerier, land og stiler over tid
 - **År:** årsoppsummering for hvert år, i stil med Recappd
-- **Sammenlign:** felles bryggerier, land og stiler med en venn, og året side om side
+- **Sammenlign:** felles øl, bryggerier, land og stiler med en venn – for hele tiden, ett år eller en periode
 - Norsk og engelsk
 
 Tallene er unike øl, ikke innsjekkinger.
@@ -28,8 +28,8 @@ Dette krever hele ølhistorikken din, og Untappd gir bare 25 øl om gangen. Før
 (én side i sekundet og et halvt), og du kan stoppe underveis — det som er hentet, blir lagret. Senere hentes
 bare det som er nytt. Historikken lagres bare i nettleseren din.
 
-Under **Sammenlign** kan du hente en venns historikk på samme måte og se året side om side, med antall øl
-dere begge har hatt det året.
+Under **Sammenlign** kan du hente en venns historikk på samme måte. Filteret øverst velger hele tiden, ett år
+eller en periode, og styrer tallene, grafen, listene og merkene – med antall øl dere begge har hatt i tidsrommet.
 
 Tallene er øl du smakte **for første gang** det året. Untappds egen Recappd teller alle unike øl du sjekket
 inn i året, også gjengangere, så tallene vil avvike noe. Steder, byer og gjentatte innsjekkinger
@@ -111,6 +111,10 @@ npm run lint    # web-ext lint (selvdistribuert)
 ```
 
 Last inn midlertidig: Firefox `about:debugging#/runtime/this-firefox` → **Last inn midlertidig tillegg** → `manifest.json`.
+Et midlertidig tillegg regnes som avinstallert når Firefox lukkes, og da slettes lagringen (hele ølhistorikken, også vennenes).
+Bruk **Last på nytt** i `about:debugging` for å beholde den, sett `extensions.webextensions.keepStorageOnUninstall` og
+`extensions.webextensions.keepUuidOnUninstall` til `true` i `about:config`, eller kjør `npm run start:firefox`, som bruker
+en fast profil i `.firefox-profile/` med disse innstillingene.
 Chrome: `chrome://extensions` → **Last inn upakket** → prosjektmappen.
 
 Legg gjerne en kopi av din egen ølside som `test/fixtures/private-beers.html` for en ekstra test mot ekte data. Filen ignoreres av git.

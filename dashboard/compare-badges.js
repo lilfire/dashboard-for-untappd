@@ -1,8 +1,8 @@
-// Merker i sammenligningen: maks nivå og spesialmerker, felles og hver for dere.
+// Merker i sammenligningen: maks nivå og spesialmerker, felles og hver for dere, i valgt tidsrom.
 // Vennens merker hentes automatisk når vennen velges, og lagres under vennens egen nøkkel.
 (function (root) {
   const { i18n, store, history, progress, badges: badgesLib } = root.DFU;
-  const { html, render } = root.DFU.html;
+  const { html, render, listMore, listClass } = root.DFU.html;
   const { t } = i18n;
   const $ = id => document.getElementById(id);
   const num = n => i18n.number(n);
@@ -15,6 +15,7 @@
     count: null,
     data: null,
     kind: 'maxed',
+    show: null,
     sync: { friend: null, running: false, error: null, controller: null },
   };
 
@@ -98,10 +99,23 @@
         <span class="sub-line">${sub}</span></span></span>`;
   }
 
-  function column(title, rows, row) {
+  function column(title, rows, row, col) {
     const more = rows.length > MAX_ROWS ? html`<li><span>… +${num(rows.length - MAX_ROWS)}</span><span></span></li>` : '';
+    const list = `badges|${col}`;
     return html`<section class="cmp-col"><h3>${title} <span>${num(rows.length)}</span></h3>
-      <ol>${rows.slice(0, MAX_ROWS).map(row)}${more}${rows.length ? '' : html`<li class="meta">${t('compare_empty')}</li>`}</ol></section>`;
+      <ol class="${listClass(list)}">${rows.slice(0, MAX_ROWS).map(row)}${more}${rows.length ? '' : html`<li class="meta">${t('compare_empty')}</li>`}${listMore(list, rows.length)}</ol></section>`;
+  }
+
+  // Med år eller periode valgt øverst vises bare merker tatt i tidsrommet; felles merker når en av dere tok det da.
+  function inScope(s) {
+    const { mode, from, to } = root.DFU.yearsView?.cmpScope?.() ?? { mode: 'all' };
+    if (mode === 'all' || !from || !to) return s;
+    const at = d => typeof d === 'string' && d.slice(0, 10) >= from && d.slice(0, 10) <= to;
+    return {
+      both: s.both.filter(x => at(x.me.date) || at(x.them.date)),
+      onlyMe: s.onlyMe.filter(x => at(x.date)),
+      onlyThem: s.onlyThem.filter(x => at(x.date)),
+    };
   }
 
   function renderBadges() {
@@ -126,13 +140,13 @@
     }
 
     const c = badgesLib.compare(mine, theirs, { mineNextKnown: view.showOpts().nextKnown, theirsNextKnown: C.data.own === true });
-    const s = c[C.kind];
+    const s = inScope(c[C.kind]);
     const maxed = C.kind === 'maxed';
     const kindLabel = t(maxed ? 'compare_badgesMaxed' : 'compare_badgesSpecial');
     const segments = [
-      [t('compare_onlyMe'), s.onlyMe.length, 'mine'],
-      [t('compare_both'), s.both.length, 'shared'],
-      [t('compare_onlyThem', C.friend), s.onlyThem.length, 'theirs'],
+      [t('compare_onlyMe'), s.onlyMe.length, 'mine', 'me'],
+      [t('compare_both'), s.both.length, 'shared', 'both'],
+      [t('compare_onlyThem', C.friend), s.onlyThem.length, 'theirs', 'them'],
     ];
     const firstText = x => (x.first === 'me' ? t('compare_badgesFirst', t('compare_you'))
       : x.first === 'them' ? t('compare_badgesFirst', C.friend)
@@ -142,16 +156,16 @@
 
     render($('cmp-badges-out'), [
       notes.length ? html`<p class="meta">${notes.join(' ')}</p>` : '',
-      html`<div class="cmp-metrics">${segments.map(([label, count, tone]) => html`<div class="cmp-stat ${tone}"><span>${label}</span><strong>${num(count)}</strong><small>${kindLabel}</small></div>`)}</div>`,
+      html`<div class="cmp-metrics">${segments.map(([label, count, tone, col]) => html`<button type="button" class="cmp-stat ${tone}" data-show="${col}" aria-pressed="${C.show === col ? 'true' : 'false'}"><span>${label}</span><strong>${num(count)}</strong><small>${kindLabel}</small></button>`)}</div>`,
       maxed && !C.data.own ? html`<p class="meta">${t('compare_badgesRule', C.friend)}</p>` : '',
-      html`<div class="cmp-cols">${[
-        column(`${t('compare_both')} (${t('compare_you')} / ${C.friend})`, s.both, x => html`<li>
-          ${badgeCell(x.me, me, `${t('compare_you')} ${dateText(x.me.date)} · ${C.friend} ${dateText(x.them.date)}`)}<span>${firstText(x)}</span></li>`),
-        column(t('compare_onlyMe'), s.onlyMe, x => html`<li>
-          ${badgeCell(x, me, onlySub(x))}<span>${maxed ? otherText(x, C.friend) : ''}</span></li>`),
-        column(t('compare_onlyThem', C.friend), s.onlyThem, x => html`<li>
-          ${badgeCell(x, C.friend, onlySub(x))}<span>${maxed ? otherText(x, t('compare_you')) : ''}</span></li>`),
-      ]}</div>`,
+      html`<div class="cmp-cols">${{
+        both: () => column(`${t('compare_both')} (${t('compare_you')} / ${C.friend})`, s.both, x => html`<li>
+          ${badgeCell(x.me, me, `${t('compare_you')} ${dateText(x.me.date)} · ${C.friend} ${dateText(x.them.date)}`)}<span>${firstText(x)}</span></li>`, 'both'),
+        me: () => column(t('compare_onlyMe'), s.onlyMe, x => html`<li>
+          ${badgeCell(x, me, onlySub(x))}<span>${maxed ? otherText(x, C.friend) : ''}</span></li>`, 'me'),
+        them: () => column(t('compare_onlyThem', C.friend), s.onlyThem, x => html`<li>
+          ${badgeCell(x, C.friend, onlySub(x))}<span>${maxed ? otherText(x, t('compare_you')) : ''}</span></li>`, 'them'),
+      }[C.show]?.() ?? html`<p class="meta">${t('compare_pickList')}</p>`}</div>`,
     ]);
   }
 
@@ -162,7 +176,13 @@
       C.kind = b.dataset.kind;
       renderBadges();
     });
-    document.addEventListener('dfu:badges', () => renderBadges());
+    $('cmp-badges-out')?.addEventListener('click', e => {
+      const b = e.target.closest('button[data-show]');
+      if (!b) return;
+      C.show = C.show === b.dataset.show ? null : b.dataset.show;
+      renderBadges();
+    });
+    for (const name of ['dfu:badges', 'dfu:cmp-scope']) document.addEventListener(name, () => renderBadges());
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

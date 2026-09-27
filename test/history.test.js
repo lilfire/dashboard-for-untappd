@@ -180,3 +180,12 @@ test('syncBadges stopper på første kjente side, med mindre full = true', async
   assert.equal(res.stopped, 'end');
   assert.equal(api.badgePagesFor(2235, 189), 43 + 4);
 });
+
+test('friend history is fetched in full only when missing, incomplete or in the old format', () => {
+  const beers = [{ id: '1' }];
+  assert.equal(history.needsFullSync({ beers: [], complete: false }), true);
+  assert.equal(history.needsFullSync({ beers, complete: false, format: history.HISTORY_FORMAT }), true);
+  assert.equal(history.needsFullSync({ beers, complete: true }), true);
+  assert.equal(history.needsFullSync({ beers, complete: true, format: null }), true);
+  assert.equal(history.needsFullSync({ beers, complete: true, format: history.HISTORY_FORMAT }), false);
+});
