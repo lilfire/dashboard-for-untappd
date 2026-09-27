@@ -17,6 +17,10 @@
         {
           "version": "1.4.0",
           "update_link": "https://github.com/lilfire/dashboard-for-untappd/releases/download/v1.4.0/dashboard-for-untappd-1.4.0.xpi"
+        },
+        {
+          "version": "1.4.1",
+          "update_link": "https://github.com/lilfire/dashboard-for-untappd/releases/download/v1.4.1/dashboard-for-untappd-1.4.1.xpi"
         }
       ]
     }
