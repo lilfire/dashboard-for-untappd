@@ -13,7 +13,7 @@ Nettleserutvidelse for Firefox, Chrome og andre Chromium-baserte nettlesere, ogs
 - **Mine øl:** alle ølene du har drukket, med søk, sortering og din rangering mot den globale
 - **Utvikling:** kurve over unike øl, bryggerier, land og stiler over tid
 - **År:** årsoppsummering for hvert år, i stil med Recappd
-- **Sammenlign:** felles øl, bryggerier, land og stiler med en venn – for hele tiden, ett år eller en periode
+- **Sammenlign:** felles øl, bryggerier, land og stiler med én eller flere venner – for hele tiden, ett år eller en periode
 - Norsk og engelsk
 
 Tallene er unike øl, ikke innsjekkinger.
@@ -28,8 +28,9 @@ Dette krever hele ølhistorikken din, og Untappd gir bare 25 øl om gangen. Før
 (én side i sekundet og et halvt), og du kan stoppe underveis — det som er hentet, blir lagret. Senere hentes
 bare det som er nytt. Historikken lagres bare i nettleseren din.
 
-Under **Sammenlign** kan du hente en venns historikk på samme måte. Filteret øverst velger hele tiden, ett år
-eller en periode, og styrer tallene, grafen, listene og merkene – med antall øl dere begge har hatt i tidsrommet.
+Under **Sammenlign** kan du hente historikken til én eller flere venner på samme måte. Vennene legges til én
+for én og kan fjernes igjen. Filteret øverst velger hele tiden, ett år eller en periode, og styrer tallene,
+grafen, listene og merkene – delt i felles for alle, bare deg og noen av dere, for tidsrommet.
 
 Tallene er øl du smakte **for første gang** det året. Untappds egen Recappd teller alle unike øl du sjekket
 inn i året, også gjengangere, så tallene vil avvike noe. Steder, byer og gjentatte innsjekkinger
@@ -44,9 +45,9 @@ leser hele merkelisten, 52 merker per side med pause mellom hver. Senere hentes 
 profilen har endret seg, eller når det har gått en uke. Da hentes bare det nye. Merkebildene lastes fra
 `assets.untappd.com`.
 
-Under **Sammenlign** hentes vennens merker automatisk, og du ser maks nivå og spesialmerker felles, bare hos deg
-og bare hos vennen, med hvem som tok merket først. Untappd viser ikke om en venn kan gå videre på et merke. Hos
-vennen regnes derfor nivå 100 som maks, i tillegg til merker der du selv er på maks.
+Under **Sammenlign** hentes vennenes merker automatisk, og du ser maks nivå og spesialmerker felles for alle, bare
+hos deg og hos noen av dere, med hvem som tok merket først. Untappd viser ikke om en venn kan gå videre på et
+merke. Hos vennene regnes derfor nivå 100 som maks, i tillegg til merker der du selv er på maks.
 
 ## Installer
 
